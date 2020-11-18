@@ -1,0 +1,32 @@
+ion-header {
+  ion-button {
+    font-weight: bold;
+  }
+}
+
+div.intro-text {
+  font-size: 14px;
+  color: var(--ion-color-success);
+  font-weight: bold;
+}
+
+ion-label.label-stacked.sc-ion-label-ios-h {
+  color: var(--ion-color-dark);
+  font-size: 17px;
+  font-weight: bold;
+}
+
+ion-item {
+  margin: 10px 0 28px;
+  --border-color: var(--ion-color-light-shade);
+}
+
+ion-input {
+  --color: var(--ion-color-primary);
+  --placeholder-color: var(--ion-color-medium);
+}
+
+ion-textarea {
+  --color: var(--ion-color-primary);
+  --placeholder-color: var(--ion-color-medium);
+}

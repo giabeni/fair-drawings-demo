@@ -11,6 +11,10 @@ const routes: Routes = [
     redirectTo: 'home',
     pathMatch: 'full'
   },
+  {
+    path: 'create-draw',
+    loadChildren: () => import('./create-draw/create-draw.module').then( m => m.CreateDrawPageModule)
+  },
 ];
 
 @NgModule({

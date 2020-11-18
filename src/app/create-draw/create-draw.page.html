@@ -1,0 +1,62 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button></ion-back-button>
+    </ion-buttons>
+    <ion-title>
+      Novo Sorteio
+    </ion-title>
+    <ion-buttons slot="end">
+      <ion-button color="success" fill="clear">
+        Criar
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="ion-padding-horizontal intro-text">
+    <p color="success">Preencha os campos abaixo para criar seu próprio sorteio justo!</p>
+  </div>
+
+  <ion-list lines="full">
+    <ion-item>
+      <ion-label position="stacked">Nome da Sala</ion-label>
+      <ion-input type="text" placeholder="Escreva o nome do sorteio" autofocus="true" enterkeyhint="next"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Descrição</ion-label>
+      <ion-textarea
+        enterkeyhint="next"
+        rows="4"
+        placeholder="Adicione informações relevantes sobre o sorteio."></ion-textarea>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Mínimo de Participantes</ion-label>
+      <ion-input type="number" min="2" enterkeyhint="next" value="2"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Máximo de Participantes</ion-label>
+      <ion-input type="number" max="99999" enterkeyhint="next" value="10"></ion-input>
+    </ion-item>
+
+    <div class="ion-padding-horizontal">
+      <ion-note color="success">
+        <small>Marque caso queira solicitar uma senha para entrar neste sorteio.</small>
+      </ion-note>
+    </div>
+    <ion-item>
+      <ion-label>Sala Privada</ion-label>
+      <ion-toggle color="primary" slot="end"></ion-toggle>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Senha da Sala</ion-label>
+      <ion-input type="password" placeholder="Digite a senha" enterkeyhint="next"></ion-input>
+    </ion-item>
+
+  </ion-list>
+</ion-content>
