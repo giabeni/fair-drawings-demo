@@ -1,0 +1,7 @@
+{
+  "name": "fair-drawings-demo",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}
