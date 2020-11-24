@@ -16,7 +16,7 @@
   <ion-searchbar placeholder="Pesquisar sala..."></ion-searchbar>
 
   <ion-list lines="full">
-    <ion-item *ngFor="let i of [1,2,3,4,5,6]" class="draw-item">
+    <ion-item *ngFor="let i of [1,2,3,4,5,6]" class="draw-item" [routerLink]="['/draw']" detail="false">
       <ion-label>
         <h2>Sorteio PCS #1</h2>
         <p class="badges-line">

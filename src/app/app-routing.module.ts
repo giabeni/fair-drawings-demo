@@ -15,6 +15,10 @@ const routes: Routes = [
     path: 'create-draw',
     loadChildren: () => import('./create-draw/create-draw.module').then( m => m.CreateDrawPageModule)
   },
+  {
+    path: 'draw',
+    loadChildren: () => import('./draw/draw.module').then( m => m.DrawPageModule)
+  },
 ];
 
 @NgModule({

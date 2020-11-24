@@ -1,0 +1,225 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button>
+        <ion-icon slot="icon-only" name="log-out-outline" color="danger" class="flip-x"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>
+      Sorteio ABC
+    </ion-title>
+    <ion-buttons slot="end">
+      <ion-button>
+        <ion-icon slot="icon-only" name="share-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  
+  <header class="draw-header">
+    <div class="status-breadcrumbs">
+      <div class="breadcrumb" [class.done]="true">Commit</div>
+      <div class="breadcrumb" [class.active]="true">Reveal</div>
+      <div class="breadcrumb" [class.pending]="true">Resultado</div>
+    </div>
+
+    <div class="description">
+      <h5>
+        <ion-icon name="document-text-outline"></ion-icon>
+        Descrição
+      </h5>
+      <p>Lorem ipudkjj kjlasdj asdjas ffds hgghuwgfddkjj kjlasdj asdjas ffds hgghuwgfddkjj kjlasdj asdjas ffds hgghuwgfddkjj kjlasdj asdjas ffds hgghuwgfddkjj kjlasdj asdjas ffds hgghuwgfdpoiw f</p>
+    </div>
+  </header>
+
+  <h5>
+    <ion-icon name="people-circle-outline"></ion-icon>
+    Participantes
+    <span class="candidates-count">6/10</span>
+  </h5>
+  <ion-list lines="full">
+    <ion-item *ngFor="let i of [1,2,3,4,5,6]" class="draw-item" [class.me]="i == 3">
+      <ion-note slot="start" color="medium">#0</ion-note>
+      <ion-avatar slot="start">
+        <img src="https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/21760012/original/d4c0c142f91f012c9a8a9c9aeef3bac28036f15b/create-your-cartoon-style-flat-avatar-or-icon.jpg">
+      </ion-avatar>
+      <ion-label>
+        João da Silva
+      </ion-label>
+      <ion-button slot="end" color="primary" fill="clear" size="small" strong="true">aguardando commit</ion-button>
+      <!-- <ion-badge slot="end" color="primary">Commit pendente</ion-badge> -->
+    </ion-item>
+  </ion-list>
+</ion-content>
+
+<ion-footer>
+  <ion-button expand="full" color="primary" fill="solid" size="large" class="ion-no-margin">Enviar commit</ion-button>
+</ion-footer>
+
+<div class="modal" *ngIf="true">
+  <div class="overlay"></div>
+  <div class="form-container">
+    <ion-row class="ion-align-items-center ion-justify-content-center number-picker">
+      <ion-col size="9" class="ion-text-center">
+        <b>Escolha um número</b><br>
+        <small> (ou clique para aleatorizar)</small>
+      </ion-col>
+      
+      <ion-col size="4">
+        <ion-icon name="remove-circle-outline" color="dark"></ion-icon>
+      </ion-col>
+      <ion-col size="4">
+        <h3>17</h3>
+      </ion-col>
+      <ion-col size="4">
+        <ion-icon name="add-circle-outline" color="dark"></ion-icon>
+      </ion-col>
+    </ion-row>
+
+    <ion-item lines="full">
+      <b slot="start">Chave:</b>
+      <ion-label>jasf2f6dsfafds51f65sd3fs3</ion-label>
+      <ion-icon slot="end" name="refresh-outline" color="primary"></ion-icon>
+    </ion-item>
+
+    <ion-item lines="full">
+      <b slot="start">Hash:</b>
+      <ion-label class="hash">sadasds4324234dsdsadkjsaf32j4k32j4l23jl4...ksjdflfjlsl2k4</ion-label>
+    </ion-item>
+
+    <ion-row class="ion-justify-content-between footer-buttons">
+      <ion-col size="auto">
+        <ion-button color="danger" fill="clear">Cancelar</ion-button>
+      </ion-col>
+      <ion-col size="auto">
+        <ion-button color="success" fill="clear" strong="true">Confirmar commit</ion-button>
+      </ion-col>
+    </ion-row>
+
+  </div>
+</div>
+
+<div class="modal" *ngIf="false">
+  <div class="overlay"></div>
+  <ion-card>
+    <ion-card-header>
+      <ion-item lines="none">
+        <ion-avatar slot="start">
+          <img src="https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/21760012/original/d4c0c142f91f012c9a8a9c9aeef3bac28036f15b/create-your-cartoon-style-flat-avatar-or-icon.jpg">
+        </ion-avatar>
+        <ion-label class="ion-text-center">
+          João da Silva
+        </ion-label>
+        <ion-note slot="end" color="medium">#0</ion-note>
+      </ion-item>
+    </ion-card-header>
+
+    <ion-card-content>
+      <div class="ion-text-center">
+        <ion-note color="primary">
+          <small>Clique nas caixas para copiar seu valor</small>
+        </ion-note>
+      </div>
+      <ion-grid>
+        <ion-row class="ion-justify-content-between">
+          <ion-col size="auto">
+            <h2>Assinatura</h2>
+          </ion-col>
+          <ion-col size="4"></ion-col>
+          <ion-col size="auto">
+            <ion-icon name="lock-closed" color="success"></ion-icon>
+          </ion-col>
+
+          <ion-col class="ion-text-center" size="12">
+            <ion-text color="success">
+              <small><b>A assinatura foi validada com sucesso.</b></small>
+            </ion-text>
+          </ion-col>
+        </ion-row>
+
+        <ion-row class="ion-justify-content-between">
+          <ion-col size="auto">
+            <h2>Commit</h2>
+          </ion-col>
+          <ion-col size="auto">
+            <ion-note>
+              <small>20/10/2020 às 14:02:56</small>
+            </ion-note>
+          </ion-col>
+          <ion-col class="ion-text-center" size="12">
+            <ion-textarea
+              readonly
+              rows="3"
+              value="lj;dlksadksal;djklsa;djiowqjoi qwjque0932oirasljjsfjdsifsdfjajdaspjdsaojdasjpoa"></ion-textarea>
+          </ion-col>
+        </ion-row>
+
+        <ion-row class="ion-justify-content-between">
+
+          <ion-col size="auto">
+            <h2>Reveal</h2>
+          </ion-col>
+
+          <ion-col size="4"></ion-col>
+
+          <ion-col size="auto">
+            <ion-note>
+              <small>20/10/2020 às 14:02:56</small>
+            </ion-note>
+          </ion-col>
+
+
+          <ion-col class="ion-text-center" size="3">
+            <small>Número:</small>
+            <ion-textarea
+              class="number"
+              readonly
+              cols="3"
+              rows="1"
+              value="12"></ion-textarea>
+          </ion-col>
+
+          <ion-col size="1">
+            <strong class="reveal-plus">+</strong>
+          </ion-col>
+
+          <ion-col size="8" class="ion-text-center">
+            <small>Chave (nonce):</small>
+            <ion-textarea
+              class="mask"
+              readonly
+              rows="1"
+              value="dsadasderfewfew1261das65"></ion-textarea>
+          </ion-col>
+
+
+          <ion-col size="12" class="ion-text-center">
+            <ion-icon name="arrow-down-outline"></ion-icon>
+          </ion-col>
+
+
+          <ion-col size="12" class="ion-text-center">
+            <ion-textarea
+              class="mask"
+              color="success"
+              readonly
+              rows="2"
+              value="dsadasderfewdasfas1as5d1as5d1as5d1asd1as16adas61dsafew1261das65"></ion-textarea>
+          </ion-col>
+          <ion-text color="success" class="ion-text-center">
+            <small>
+              <b>
+                O resultado da hash obtido no reveal confere com o digest enviado no commit.
+              </b>
+            </small>
+          </ion-text>
+        </ion-row>
+      </ion-grid>
+      <ion-button color="danger" fill="clear" expand="full" size="small">
+        Fechar
+      </ion-button>
+    </ion-card-content>
+  </ion-card>
+</div>
