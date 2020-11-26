@@ -16,7 +16,7 @@ const routes: Routes = [
     loadChildren: () => import('./create-draw/create-draw.module').then( m => m.CreateDrawPageModule)
   },
   {
-    path: 'draw',
+    path: 'draw/:uuid',
     loadChildren: () => import('./draw/draw.module').then( m => m.DrawPageModule)
   },
 ];

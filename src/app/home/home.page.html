@@ -13,30 +13,62 @@
 
 <ion-content [fullscreen]="true">
   
+  <ion-refresher slot="fixed" (ionRefresh)="refresh($event)" [disabled]="loading">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+  
   <ion-searchbar placeholder="Pesquisar sala..."></ion-searchbar>
-
+  
   <ion-list lines="full">
-    <ion-item *ngFor="let i of [1,2,3,4,5,6]" class="draw-item" [routerLink]="['/draw']" detail="false">
-      <ion-label>
-        <h2>Sorteio PCS #1</h2>
-        <p class="badges-line">
-          <ion-badge color="light" class="ion-margin-end" [class.open]="true" [class.closed]="i === 4">
-            <ion-icon name="people-outline"></ion-icon>
-            &#160;10/16
-          </ion-badge>
-          
-          <ion-badge color="light" class="ion-margin-end" [class.open]="true" [class.closed]="i === 4">
-            <ion-icon name="lock-open-outline"></ion-icon>
-            &#160;aberta
-          </ion-badge>
-        </p>
-        <p>Sala para sorteio de um computador lorem ipsum dolor sit amet...</p>
-      </ion-label>
-      <div class="status-breadcrumbs">
-        <span [class.done]="true">C</span>
-        <span [class.active]="true">R</span>
-        <span [class.pending]="true">&#10004;</span>
-      </div>
-    </ion-item>
+    <ng-container *ngIf="loading">
+      <ion-item *ngFor="let i of [1,2,3,4,5,6]" class="draw-item" detail="false">
+        <ion-label>
+          <h2>
+            <ion-skeleton-text animated style="width: 80%"></ion-skeleton-text>
+          </h2>
+          <p class="badges-line">
+            <ion-skeleton-text animated style="width: 20%; float: left;"></ion-skeleton-text>
+            <ion-skeleton-text animated style="width: 20%; float: left; margin-left: 10px;"></ion-skeleton-text>
+            <ion-skeleton-text animated style="width: 30%; float: right;"></ion-skeleton-text>
+          </p>
+          <p>
+            <ion-skeleton-text animated style="width: 100%"></ion-skeleton-text>
+          </p>
+        </ion-label>
+      </ion-item>
+    </ng-container>
+
+    <ng-container *ngIf="!loading">
+      <ion-item *ngFor="let draw of draws" class="draw-item" [routerLink]="['/draw', draw.uuid]" detail="false">
+        <ion-label>
+          <h2>Sorteio - {{ draw.data.title }}</h2>
+          <p class="badges-line">
+            <ion-badge color="light" class="ion-margin-end" [class.open]="draw.candidatesCount < draw.spots" [class.closed]="draw.candidatesCount >= draw.spots">
+              <ion-icon name="people-outline"></ion-icon>
+              &#160; {{ draw.candidatesCount }}/{{ draw.spots }}
+            </ion-badge>
+            
+            <ion-badge color="light" class="ion-margin-end" [class.open]="!draw.data.private" [class.closed]="draw.data.private">
+              <ion-icon name="lock-open-outline"></ion-icon>
+              &#160;{{ draw.data.private ? 'fechada' : 'aberta'}}
+            </ion-badge>
+          </p>
+          <p>{{ draw.data.description }}</p>
+        </ion-label>
+        <div class="status-breadcrumbs">
+          <span [class.active]="draw.status === DrawStatus.COMMIT" [class.done]="[DrawStatus.REVEAL, DrawStatus.FINISHED].includes(draw.status)">C</span>
+          <span [class.active]="draw.status === DrawStatus.REVEAL" [class.done]="[DrawStatus.FINISHED].includes(draw.status)">R</span>
+          <span [class.active]="draw.status === DrawStatus.FINISHED">&#10004;</span>
+        </div>
+      </ion-item>
+    </ng-container>
   </ion-list>
+
+  <ion-infinite-scroll threshold="100px" (ionInfinite)="loadNextPage($event)">
+    <ion-infinite-scroll-content
+      class="ion-margin-top"
+      loadingSpinner="bubbles"
+      loadingText="Carregando...">
+    </ion-infinite-scroll-content>
+  </ion-infinite-scroll>
 </ion-content>

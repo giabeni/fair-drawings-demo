@@ -1,12 +1,13 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
     <ion-buttons slot="start">
-      <ion-button>
+      <ion-button [routerLink]="['/home']" routerDirection="back" >
         <ion-icon slot="icon-only" name="log-out-outline" color="danger" class="flip-x"></ion-icon>
       </ion-button>
     </ion-buttons>
     <ion-title>
-      Sorteio ABC
+      {{ draw && !loading ? draw.data.title : '' }}
+      <ion-skeleton-text animated style="width: 100%" *ngIf="loading"></ion-skeleton-text>
     </ion-title>
     <ion-buttons slot="end">
       <ion-button>
@@ -17,12 +18,12 @@
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  
-  <header class="draw-header">
+
+  <header class="draw-header" *ngIf="loading">
     <div class="status-breadcrumbs">
-      <div class="breadcrumb" [class.done]="true">Commit</div>
-      <div class="breadcrumb" [class.active]="true">Reveal</div>
-      <div class="breadcrumb" [class.pending]="true">Resultado</div>
+      <div class="breadcrumb">Commit</div>
+      <div class="breadcrumb">Reveal</div>
+      <div class="breadcrumb">Resultado</div>
     </div>
 
     <div class="description">
@@ -30,17 +31,54 @@
         <ion-icon name="document-text-outline"></ion-icon>
         Descrição
       </h5>
-      <p>Lorem ipudkjj kjlasdj asdjas ffds hgghuwgfddkjj kjlasdj asdjas ffds hgghuwgfddkjj kjlasdj asdjas ffds hgghuwgfddkjj kjlasdj asdjas ffds hgghuwgfddkjj kjlasdj asdjas ffds hgghuwgfdpoiw f</p>
+      <ion-skeleton-text animated style="width: 100%"></ion-skeleton-text>
+      <ion-skeleton-text animated style="width: 100%"></ion-skeleton-text>
+      <ion-skeleton-text animated style="width: 80%"></ion-skeleton-text>
+    </div>
+  </header>
+  
+  <header class="draw-header" *ngIf="!loading && draw">
+    <div class="status-breadcrumbs">
+      <div class="breadcrumb" [class.active]="draw.status === DrawStatus.COMMIT" [class.done]="[DrawStatus.REVEAL, DrawStatus.FINISHED].includes(draw.status)">Commit</div>
+      <div class="breadcrumb" [class.active]="draw.status === DrawStatus.REVEAL" [class.done]="[DrawStatus.FINISHED].includes(draw.status)">Reveal</div>
+      <div class="breadcrumb" [class.active]="draw.status === DrawStatus.FINISHED">Resultado</div>
+    </div>
+
+    <div class="description">
+      <h5>
+        <ion-icon name="document-text-outline"></ion-icon>
+        Descrição
+      </h5>
+      <p>{{ draw.data.description }}</p>
     </div>
   </header>
 
   <h5>
     <ion-icon name="people-circle-outline"></ion-icon>
     Participantes
-    <span class="candidates-count">6/10</span>
+    <span class="candidates-count" *ngIf="!loading && draw">{{draw.candidatesCount}}/{{draw.spots}}</span>
+    <span class="candidates-count" *ngIf="loading">...</span>
   </h5>
-  <ion-list lines="full">
-    <ion-item *ngFor="let i of [1,2,3,4,5,6]" class="draw-item" [class.me]="i == 3">
+
+  <ion-list lines="full" *ngIf="loading">
+    <ion-item *ngFor="let i of [1,2,3,4,5,6,7,8,9,10]" class="draw-item">
+      <ion-note slot="start" color="medium">
+        <ion-skeleton-text class="candidates-count" animated></ion-skeleton-text>
+      </ion-note>
+      <ion-avatar slot="start">
+        <ion-skeleton-text class="candidates-count" animated style="width: 100%"></ion-skeleton-text>
+      </ion-avatar>
+      <ion-label>
+        <ion-skeleton-text class="candidates-count" animated style="width: 100%"></ion-skeleton-text>
+      </ion-label>
+      <ion-button slot="end" color="primary" fill="clear" size="small" strong="true">
+        <ion-skeleton-text class="candidates-count" animated style="width: 100%"></ion-skeleton-text>
+      </ion-button>
+    </ion-item>
+  </ion-list>
+
+  <ion-list lines="full" *ngIf="!loading && draw">
+    <ion-item *ngFor="let i of [1,2,3,4,5,6]" class="draw-item" [class.me]="i === draw.candidates.length - 1" [class.winner]="false">
       <ion-note slot="start" color="medium">#0</ion-note>
       <ion-avatar slot="start">
         <img src="https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/21760012/original/d4c0c142f91f012c9a8a9c9aeef3bac28036f15b/create-your-cartoon-style-flat-avatar-or-icon.jpg">
@@ -48,18 +86,79 @@
       <ion-label>
         João da Silva
       </ion-label>
-      <ion-button slot="end" color="primary" fill="clear" size="small" strong="true">aguardando commit</ion-button>
+      <ion-button 
+        (click)="openModal('viewDetails')"
+        slot="end" 
+        color="primary" 
+        fill="clear" 
+        size="small" 
+        strong="true">aguardando commit</ion-button>
       <!-- <ion-badge slot="end" color="primary">Commit pendente</ion-badge> -->
     </ion-item>
   </ion-list>
 </ion-content>
 
 <ion-footer>
-  <ion-button expand="full" color="primary" fill="solid" size="large" class="ion-no-margin">Enviar commit</ion-button>
+  <ion-button *ngIf="!loading && draw && draw.status === DrawStatus.PENDING" 
+    expand="full" 
+    color="light" 
+    fill="solid" 
+    size="large" 
+    [disabled]="true"
+    class="ion-no-margin">Aguardando participantes...</ion-button>
+
+  <ion-button *ngIf="!loading && draw && draw.status === DrawStatus.COMMIT" 
+    (click)="openModal('sendCommit')"
+    expand="full" 
+    color="primary" 
+    fill="solid" 
+    size="large" 
+    class="ion-no-margin">Enviar commit</ion-button>
+  
+  <ion-button *ngIf="!loading && draw && draw.status === DrawStatus.REVEAL" 
+    (click)="openModal('sendReveal')"
+    expand="full" 
+    color="primary" 
+    fill="solid" 
+    size="large" 
+    class="ion-no-margin">Enviar reveal</ion-button>
+
+  <ion-button *ngIf="!loading && draw && draw.status === DrawStatus.INVALIDATED" 
+    expand="full" 
+    color="danger" 
+    fill="solid" 
+    size="large" 
+    [disabled]="true"
+    class="ion-no-margin">Sorteio cancelado</ion-button>
+
+  <ion-row *ngIf="!loading && draw && draw.status === DrawStatus.FINISHED" class="result-box ion-align-items-center ion-justify-content-center">
+    <ion-col size="auto">
+      <p>
+        SOMA = <b>43</b>
+      </p>
+    </ion-col>
+    <ion-col size="3">
+      <p>
+        <ion-icon name="arrow-forward-outline"></ion-icon>
+      </p>
+    </ion-col>
+    <ion-col size="auto">
+      <p>
+        43 % 4 = <b>3</b>
+      </p>
+    </ion-col>
+  </ion-row>
+  <div *ngIf="!loading && draw && draw.status === DrawStatus.FINISHED" class="winner-bar ion-text-center">
+    <h2>Vencedor:</h2>
+    <h4>
+      <img class="avatar" src="https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/21760012/original/d4c0c142f91f012c9a8a9c9aeef3bac28036f15b/create-your-cartoon-style-flat-avatar-or-icon.jpg">
+      João da Silva</h4>
+    <h3>#3</h3>
+  </div>
 </ion-footer>
 
-<div class="modal" *ngIf="true">
-  <div class="overlay"></div>
+<div class="modal" [class.open]="modalOpen" *ngIf="modals.sendCommit">
+  <div class="overlay" (click)="closeModal('sendCommit')"></div>
   <div class="form-container">
     <ion-row class="ion-align-items-center ion-justify-content-center number-picker">
       <ion-col size="9" class="ion-text-center">
@@ -81,7 +180,7 @@
     <ion-item lines="full">
       <b slot="start">Chave:</b>
       <ion-label>jasf2f6dsfafds51f65sd3fs3</ion-label>
-      <ion-icon slot="end" name="refresh-outline" color="primary"></ion-icon>
+      <ion-icon slot="end" name="shuffle-outline" color="primary"></ion-icon>
     </ion-item>
 
     <ion-item lines="full">
@@ -91,7 +190,7 @@
 
     <ion-row class="ion-justify-content-between footer-buttons">
       <ion-col size="auto">
-        <ion-button color="danger" fill="clear">Cancelar</ion-button>
+        <ion-button color="danger" fill="clear" (click)="closeModal('sendCommit')">Cancelar</ion-button>
       </ion-col>
       <ion-col size="auto">
         <ion-button color="success" fill="clear" strong="true">Confirmar commit</ion-button>
@@ -101,8 +200,61 @@
   </div>
 </div>
 
-<div class="modal" *ngIf="false">
-  <div class="overlay"></div>
+<div class="modal" [class.open]="modalOpen" *ngIf="modals.sendReveal">
+  <div class="overlay" (click)="closeModal('sendReveal')"></div>
+  <div class="form-container">
+    <ion-row class="ion-align-items-center ion-justify-content-center number-picker">
+      <ion-col size="12" class="ion-text-center">
+        <b>Escolha um número para revelar</b><br>
+        <small> (clique para resetar)</small>
+      </ion-col>
+      
+      <ion-col size="2">
+        <ion-icon name="remove-circle-outline" color="dark"></ion-icon>
+      </ion-col>
+      <ion-col size="8">
+        <ion-input type="number" value="17" class="choice-input"></ion-input>
+      </ion-col>
+      <ion-col size="2">
+        <ion-icon name="add-circle-outline" color="dark"></ion-icon>
+      </ion-col>
+    </ion-row>
+    <ion-row class="ion-align-items-center ion-justify-content-center number-picker">
+
+      <ion-col size="9" class="ion-text-center">
+        <b>Escolha uma chave para revelar</b><br>
+      </ion-col>
+
+      <ion-col size="12">
+        <ion-item lines="none">
+          <ion-icon slot="start" name="refresh-outline" color="success"></ion-icon>
+          <ion-input type="text" value="jasf2f6dsfafds51f65sd3fs3" class="key-input"></ion-input>
+          <!-- <ion-label>jasf2f6dsfafds51f65sd3fs3</ion-label> -->
+          <ion-icon slot="end" name="shuffle-outline" color="primary"></ion-icon>
+        </ion-item>
+      </ion-col>
+    </ion-row>
+
+
+    <ion-item lines="full">
+      <b slot="start">Hash:</b>
+      <ion-label class="hash">sadasds4324234dsdsadkjsaf32j4k32j4l23jl4...ksjdflfjlsl2k4</ion-label>
+    </ion-item>
+
+    <ion-row class="ion-justify-content-between footer-buttons">
+      <ion-col size="auto">
+        <ion-button color="danger" fill="clear" (click)="closeModal('sendReveal')">Cancelar</ion-button>
+      </ion-col>
+      <ion-col size="auto">
+        <ion-button color="success" fill="clear" strong="true">Confirmar reveal</ion-button>
+      </ion-col>
+    </ion-row>
+
+  </div>
+</div>
+
+<div class="modal" [class.open]="modalOpen" *ngIf="modals.viewDetails">
+  <div class="overlay" (click)="closeModal('viewDetails')"></div>
   <ion-card>
     <ion-card-header>
       <ion-item lines="none">
@@ -217,7 +369,7 @@
           </ion-text>
         </ion-row>
       </ion-grid>
-      <ion-button color="danger" fill="clear" expand="full" size="small">
+      <ion-button color="danger" fill="clear" expand="full" size="small" (click)="closeModal('viewDetails')">
         Fechar
       </ion-button>
     </ion-card-content>
