@@ -36,7 +36,7 @@ export class HomePage implements OnInit {
     this.pagination.pageCount = Math.ceil(DRAWS_MOCKS.length / perPage);
     const start = this.pagination.page * perPage;
     const end = start + perPage;
-    console.log("🚀 ~ file: home.page.ts ~ line 50 ~ HomePage ~ newDraws ~ DRAWS_MOCKS", Array.from(DRAWS_MOCKS))
+    console.log('🚀 ~ file: home.page.ts ~ line 50 ~ HomePage ~ newDraws ~ DRAWS_MOCKS', Array.from(DRAWS_MOCKS));
     const newDraws = DRAWS_MOCKS.slice(start, end).map(draw => {
       const spots = Math.floor(Math.random() * 18) + 2;
       const candidatesCount = Math.floor(Math.random() * (spots + 5));

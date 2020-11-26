@@ -57,7 +57,7 @@ export class DrawPage implements OnInit {
       status: Math.floor(Math.random() * 4) - 1,
       candidatesCount: candidatesCount <= spots ? candidatesCount : spots,
     };
-    console.log("🚀 ~ file: draw.page.ts ~ line 44 ~ DrawPage ~ getDraw ~ this.draw", this.draw)
+    console.log('🚀 ~ file: draw.page.ts ~ line 44 ~ DrawPage ~ getDraw ~ this.draw', this.draw);
 
 
     this.draw.candidates = [];
