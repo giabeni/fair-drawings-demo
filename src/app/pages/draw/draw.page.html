@@ -41,7 +41,7 @@
     <div class="status-breadcrumbs">
       <div class="breadcrumb" [class.active]="draw.status === DrawStatus.COMMIT" [class.done]="[DrawStatus.REVEAL, DrawStatus.FINISHED].includes(draw.status)">Commit</div>
       <div class="breadcrumb" [class.active]="draw.status === DrawStatus.REVEAL" [class.done]="[DrawStatus.FINISHED].includes(draw.status)">Reveal</div>
-      <div class="breadcrumb" [class.active]="draw.status === DrawStatus.FINISHED">Resultado</div>
+      <div class="breadcrumb" [class.done]="draw.status === DrawStatus.FINISHED">Resultado</div>
     </div>
 
     <div class="description">
@@ -77,14 +77,14 @@
     </ion-item>
   </ion-list>
 
-  <ion-list lines="full" *ngIf="!loading && draw">
-    <ion-item *ngFor="let i of [1,2,3,4,5,6]" class="draw-item" [class.me]="i === draw.candidates.length - 1" [class.winner]="false">
-      <ion-note slot="start" color="medium">#0</ion-note>
+  <ion-list lines="full" *ngIf="!loading && draw && draw.candidates">
+    <ion-item *ngFor="let candidate of draw.candidates; let i = index" class="draw-item" [class.me]="i === draw.candidates.length - 1" [class.winner]="false">
+      <ion-note slot="start" color="medium">#{{i}}</ion-note>
       <ion-avatar slot="start">
-        <img src="https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/21760012/original/d4c0c142f91f012c9a8a9c9aeef3bac28036f15b/create-your-cartoon-style-flat-avatar-or-icon.jpg">
+        <img [src]="candidate.avatar">
       </ion-avatar>
       <ion-label>
-        João da Silva
+        {{candidate.firstName}} {{candidate.lastName}}
       </ion-label>
       <ion-button 
         (click)="openModal('viewDetails')"
@@ -93,7 +93,6 @@
         fill="clear" 
         size="small" 
         strong="true">aguardando commit</ion-button>
-      <!-- <ion-badge slot="end" color="primary">Commit pendente</ion-badge> -->
     </ion-item>
   </ion-list>
 </ion-content>
@@ -295,7 +294,7 @@
           <ion-col size="auto">
             <h2>Commit</h2>
           </ion-col>
-          <ion-col size="auto">
+          <ion-col size="auto" class="ion-text-right">
             <ion-note>
               <small>20/10/2020 às 14:02:56</small>
             </ion-note>
@@ -310,13 +309,13 @@
 
         <ion-row class="ion-justify-content-between">
 
-          <ion-col size="auto">
+          <ion-col size="4">
             <h2>Reveal</h2>
           </ion-col>
 
-          <ion-col size="4"></ion-col>
+          <ion-col size="1"></ion-col>
 
-          <ion-col size="auto">
+          <ion-col size="7" class="ion-text-right">
             <ion-note>
               <small>20/10/2020 às 14:02:56</small>
             </ion-note>

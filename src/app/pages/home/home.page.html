@@ -1,5 +1,10 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-avatar *ngIf="!!currentUser">
+        <img [src]="currentUser.photoURL" (click)="openProfile()"/>
+      </ion-avatar>
+    </ion-buttons>
     <ion-title>
       Salas de Sorteio
     </ion-title>
@@ -39,7 +44,7 @@
     </ng-container>
 
     <ng-container *ngIf="!loading">
-      <ion-item *ngFor="let draw of draws" class="draw-item" [routerLink]="['/draw', draw.uuid]" detail="false">
+      <ion-item *ngFor="let draw of draws" class="draw-item" [routerLink]="['/draw', draw.uuid]" [state]="{draw: draw}" detail="false">
         <ion-label>
           <h2>Sorteio - {{ draw.data.title }}</h2>
           <p class="badges-line">
@@ -58,7 +63,7 @@
         <div class="status-breadcrumbs">
           <span [class.active]="draw.status === DrawStatus.COMMIT" [class.done]="[DrawStatus.REVEAL, DrawStatus.FINISHED].includes(draw.status)">C</span>
           <span [class.active]="draw.status === DrawStatus.REVEAL" [class.done]="[DrawStatus.FINISHED].includes(draw.status)">R</span>
-          <span [class.active]="draw.status === DrawStatus.FINISHED">&#10004;</span>
+          <span [class.done]="draw.status === DrawStatus.FINISHED">&#10004;</span>
         </div>
       </ion-item>
     </ng-container>

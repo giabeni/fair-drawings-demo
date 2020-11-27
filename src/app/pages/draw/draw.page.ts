@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { Draw, DrawStatus, wait } from '../../interfaces/draw.interfaces';
-import DRAWS_MOCKS from '../../mocks/draws.json';
+import { Draw, DrawStatus, wait } from '../../../interfaces/draw.interfaces';
+import DRAWS_MOCKS from '../../../mocks/draws.json';
+import USERS_MOCKS from '../../../mocks/users.json';
 
 @Component({
   selector: 'app-draw',
@@ -45,25 +46,25 @@ export class DrawPage implements OnInit {
     const draw = DRAWS_MOCKS.find(d => d.uuid === this.uuid);
 
     await wait(1000);
-    const spots = Math.floor(Math.random() * 18) + 2;
-    const candidatesCount = Math.floor(Math.random() * (spots + 5));
     this.draw = {
       data: {
         ...draw,
-        private: Math.random() % 2 === 0,
+        private: false,
       },
       uuid: draw.uuid,
-      spots,
-      status: Math.floor(Math.random() * 4) - 1,
-      candidatesCount: candidatesCount <= spots ? candidatesCount : spots,
+      spots: draw.spots,
+      status: draw.status,
+      candidatesCount: draw.candidatesCount > draw.spots ? draw.spots : draw.candidatesCount,
+      candidates: [],
     };
-    console.log('🚀 ~ file: draw.page.ts ~ line 44 ~ DrawPage ~ getDraw ~ this.draw', this.draw);
 
-
-    this.draw.candidates = [];
     for (let i = 0; i < this.draw.candidatesCount; i++) {
-      this.draw.candidates.push(i);
+      const randomIndex = Math.floor(Math.random() * 100);
+      const candidate = USERS_MOCKS[randomIndex];
+
+      this.draw.candidates.push(candidate);
     }
+    console.log('🚀 ~ file: draw.page.ts ~ line 52 ~ DrawPage ~ getDraw ~ this.draw', this.draw);
 
     this.loading = false;
   }

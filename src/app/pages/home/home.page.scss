@@ -2,6 +2,18 @@
   font-size: 12px;
 }
 
+ion-buttons {
+  ion-avatar {
+    img {
+      width: 30px;
+      height: 30px;
+      position: relative;
+      top: 10px;
+      left: 10px;
+    }
+  }
+}
+
 ion-item.draw-item {
   position: relative;
   --border-color: var(--ion-color-light-shade);
@@ -64,12 +76,6 @@ ion-item.draw-item {
         z-index: 1;
       }
 
-      &:last-child {
-        &::after {
-          border-color: transparent;
-        }
-      }
-
       &.done {
         background-color: var(--ion-color-success);
         &::after {
@@ -81,6 +87,12 @@ ion-item.draw-item {
         background-color: var(--ion-color-primary);
         &::after {
           border-bottom-style: dotted;
+        }
+      }
+
+      &:last-child {
+        &::after {
+          border-color: transparent;
         }
       }
 

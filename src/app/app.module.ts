@@ -8,6 +8,18 @@ import { StatusBar } from '@ionic-native/status-bar/ngx';
 
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
+import { SocketIoConfig, SocketIoModule } from 'ngx-socket-io';
+import { AngularFireModule } from '@angular/fire';
+import { AngularFireAuthModule } from '@angular/fire/auth';
+import { environment } from '../environments/environment';
+import { FirebaseAuthService } from './services/firebase-auth.service';
+
+
+const socketConfig: SocketIoConfig = {
+  url: 'http://localhost:3000',
+  options: {
+  },
+};
 
 @NgModule({
   declarations: [AppComponent],
@@ -18,10 +30,15 @@ import { AppRoutingModule } from './app-routing.module';
       mode: 'ios',
       backButtonText: '',
     }),
-    AppRoutingModule],
+    AppRoutingModule,
+    SocketIoModule.forRoot(socketConfig),
+    AngularFireModule.initializeApp(environment.firebase),
+    AngularFireAuthModule,
+  ],
   providers: [
     StatusBar,
     SplashScreen,
+    FirebaseAuthService,
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy }
   ],
   bootstrap: [AppComponent]

@@ -4,20 +4,24 @@ import { PreloadAllModules, RouterModule, Routes } from '@angular/router';
 const routes: Routes = [
   {
     path: 'home',
-    loadChildren: () => import('./home/home.module').then( m => m.HomePageModule)
+    loadChildren: () => import('./pages/home/home.module').then( m => m.HomePageModule)
   },
   {
     path: '',
-    redirectTo: 'home',
+    redirectTo: 'signup',
     pathMatch: 'full'
   },
   {
     path: 'create-draw',
-    loadChildren: () => import('./create-draw/create-draw.module').then( m => m.CreateDrawPageModule)
+    loadChildren: () => import('./pages/create-draw/create-draw.module').then( m => m.CreateDrawPageModule)
   },
   {
     path: 'draw/:uuid',
-    loadChildren: () => import('./draw/draw.module').then( m => m.DrawPageModule)
+    loadChildren: () => import('./pages/draw/draw.module').then( m => m.DrawPageModule)
+  },
+  {
+    path: 'signup',
+    loadChildren: () => import('./pages/signup/signup.module').then( m => m.SignupPageModule)
   },
 ];
 

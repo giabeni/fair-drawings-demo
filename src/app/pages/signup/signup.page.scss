@@ -1,0 +1,13 @@
+ion-content {
+  --padding-start: 30px;
+  --padding-end: 30px;
+  // --color: #ffffff;
+}
+
+h2 {
+  color: var(--ion-color-primary-shade);
+}
+
+ion-row {
+  height: 100%;
+}

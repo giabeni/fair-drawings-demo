@@ -1,0 +1,27 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Autenticação</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="false">
+  <ion-row class="ion-align-items-center ion-text-center">
+    <ion-col size="12">
+      <h2>Entre com sua conta Google para autenticar-se no sistema.</h2>
+    </ion-col>
+    
+    <ion-col size="12">
+      <img src="../../../assets/images/secure_login.svg" />
+    </ion-col>
+
+    <ion-col size="12">
+      <ion-button 
+        color="danger" 
+        expand="block" 
+        [strong]="true"
+        [disabled]="!unlogged"
+        (click)="googleLogin()">{{ unlogged ? 'Login com Google' : 'Carregando...'}}</ion-button>
+    </ion-col>
+  </ion-row>
+
+</ion-content>
