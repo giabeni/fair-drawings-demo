@@ -1,8 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { ToastController } from '@ionic/angular';
+import { Subscription } from 'rxjs';
 import { Draw, DrawStatus, wait } from '../../../interfaces/draw.interfaces';
 import DRAWS_MOCKS from '../../../mocks/draws.json';
 import USERS_MOCKS from '../../../mocks/users.json';
+import { WebSocketFirebaseCommunicator } from '../../services/web-sockets-firebase.communicator';
 
 @Component({
   selector: 'app-draw',
@@ -14,6 +17,7 @@ export class DrawPage implements OnInit {
   private uuid?: string;
 
   public draw: Draw;
+  private drawEvents$: Subscription;
 
   loading = false;
 
@@ -28,18 +32,55 @@ export class DrawPage implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
-  ) { }
+    public wsCommunicator: WebSocketFirebaseCommunicator,
+    private toastCtrl: ToastController,
+    private changeDetector: ChangeDetectorRef,
+    ) { }
 
   ngOnInit() {
-    this.route.params.subscribe(params => {
+    this.route.params.subscribe(async params => {
       if (params && params.uuid) {
         this.uuid = params.uuid;
-        this.getDraw();
+        this.loading = true;
+        await this.joinDraw();
+        await this.getDraw();
+        this.loading = false;
+        this.changeDetector.detectChanges();
       }
     });
   }
 
   async getDraw() {
+    this.draw = await this.wsCommunicator.getDraw(this.uuid)
+    .catch(err => {
+      console.error('Error getting draw', err);
+      this.showToast(
+        'Erro ao ler dados do sorteio',
+        5000,
+        'danger',
+        'bottom',
+        );
+      return undefined;
+    });
+
+    if (!this.draw) { return; }
+
+    console.log(`🚀 ~ file: draw.page.ts ~ line 51 ~ DrawPage ~ getDraw ~ this.draw`, this.draw);
+
+  }
+
+  async joinDraw() {
+    this.drawEvents$ = (await this.wsCommunicator.listen(this.uuid))
+      .subscribe(event => {
+        console.log('NEW DRAW EVENT:', event);
+        this.showToast(
+          'Novo evento recebido',
+          1000
+        );
+      });
+  }
+
+  async getDrawMock() {
     /** @TODO call DrawService.getDraw */
     this.loading = true;
 
@@ -81,6 +122,18 @@ export class DrawPage implements OnInit {
 
     await wait(600);
     this.modals[modal] = false;
+  }
+
+  async showToast(msg, duration = 2000, color = 'light', position = 'bottom') {
+    const toast = await this.toastCtrl.create({
+      message: msg,
+      position: position as any,
+      duration,
+      color,
+    });
+    toast.present();
+
+    return toast;
   }
 
 }

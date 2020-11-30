@@ -29,7 +29,7 @@ export class SignupPage implements OnInit {
 
         setTimeout(() => {
           this.router.navigate(['/home']);
-        }, 500);
+        }, 100);
 
       } else {
         this.unlogged = true;

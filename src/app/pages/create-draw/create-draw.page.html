@@ -7,7 +7,7 @@
       Novo Sorteio
     </ion-title>
     <ion-buttons slot="end">
-      <ion-button color="success" fill="clear">
+      <ion-button color="success" fill="clear" (click)="createDraw()">
         Criar
       </ion-button>
     </ion-buttons>
@@ -22,12 +22,18 @@
   <ion-list lines="full">
     <ion-item>
       <ion-label position="stacked">Nome da Sala</ion-label>
-      <ion-input type="text" placeholder="Escreva o nome do sorteio" autofocus="true" enterkeyhint="next"></ion-input>
+      <ion-input
+        [(ngModel)]="draw.data.title"
+        type="text" 
+        placeholder="Escreva o nome do sorteio" 
+        autofocus="true" 
+        enterkeyhint="next"></ion-input>
     </ion-item>
 
     <ion-item>
       <ion-label position="stacked">Descrição</ion-label>
       <ion-textarea
+        [(ngModel)]="draw.data.description"
         enterkeyhint="next"
         rows="4"
         placeholder="Adicione informações relevantes sobre o sorteio."></ion-textarea>
@@ -40,7 +46,11 @@
 
     <ion-item>
       <ion-label position="stacked">Número de Participantes</ion-label>
-      <ion-input type="number" max="99999" enterkeyhint="next" value="6"></ion-input>
+      <ion-input 
+        [(ngModel)]="draw.spots"
+        max="99999" 
+        enterkeyhint="next" 
+        value="6"></ion-input>
     </ion-item>
 
     <div class="ion-padding-horizontal">
@@ -50,12 +60,16 @@
     </div>
     <ion-item>
       <ion-label>Sala Privada</ion-label>
-      <ion-toggle color="primary" slot="end"></ion-toggle>
+      <ion-toggle color="primary" slot="end" [(ngModel)]="draw.data.private"></ion-toggle>
     </ion-item>
 
     <ion-item>
       <ion-label position="stacked">Senha da Sala</ion-label>
-      <ion-input type="password" placeholder="Digite a senha" enterkeyhint="next"></ion-input>
+      <ion-input 
+        [(ngModel)]="draw.data.password"
+        type="password" 
+        placeholder="Digite a senha" 
+        enterkeyhint="next"></ion-input>
     </ion-item>
 
   </ion-list>

@@ -37,14 +37,21 @@ export interface Draw {
   status?: DrawStatus;
   candidates?: any;
   candidatesCount?: number;
+  creatorId?: string;
 }
 
 export interface DrawData {
-  title: string;
-  description: string;
-  private: boolean;
+  title?: string;
+  description?: string;
+  private?: boolean;
   password?: string;
   [key: string]: any;
+}
+
+export type DrawEvent = {
+  timestamp: number;
+  type: string;
+  data: Draw;
 }
 
 export interface PaginationResponse<T = any> {

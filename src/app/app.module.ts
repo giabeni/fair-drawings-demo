@@ -13,11 +13,15 @@ import { AngularFireModule } from '@angular/fire';
 import { AngularFireAuthModule } from '@angular/fire/auth';
 import { environment } from '../environments/environment';
 import { FirebaseAuthService } from './services/firebase-auth.service';
+import { WebSocketFirebaseCommunicator } from './services/web-sockets-firebase.communicator';
 
 
 const socketConfig: SocketIoConfig = {
   url: 'http://localhost:3000',
   options: {
+    extraHeaders: {
+      Authorization: 'Bearer authorization_token_here',
+    }
   },
 };
 
@@ -39,6 +43,7 @@ const socketConfig: SocketIoConfig = {
     StatusBar,
     SplashScreen,
     FirebaseAuthService,
+    WebSocketFirebaseCommunicator,
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy }
   ],
   bootstrap: [AppComponent]

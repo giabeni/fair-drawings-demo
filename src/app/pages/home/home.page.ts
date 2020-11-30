@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ActionSheetController, ToastController } from '@ionic/angular';
 import { Socket } from 'ngx-socket-io';
@@ -6,6 +6,7 @@ import { Observable, Subject, Subscription } from 'rxjs';
 import { FirebaseAuthService } from 'src/app/services/firebase-auth.service';
 import { Draw, DrawStatus, PaginationResponse, wait } from '../../../interfaces/draw.interfaces';
 import DRAWS_MOCKS from '../../../mocks/draws.json';
+import { WebSocketFirebaseCommunicator } from '../../services/web-sockets-firebase.communicator';
 @Component({
   selector: 'app-home',
   templateUrl: 'home.page.html',
@@ -13,7 +14,7 @@ import DRAWS_MOCKS from '../../../mocks/draws.json';
 })
 export class HomePage implements OnInit, OnDestroy {
 
-  loading = false;
+  loading = true;
   draws: Draw[] = [];
 
   DrawStatus = DrawStatus;
@@ -27,6 +28,7 @@ export class HomePage implements OnInit, OnDestroy {
 
   currentUser: any;
   userSubscription: Subscription;
+  drawsSubscription: Subscription;
 
 
   message = '';
@@ -40,21 +42,25 @@ export class HomePage implements OnInit, OnDestroy {
     public authSrvc: FirebaseAuthService,
     public router: Router,
     public actionSheetCtrl: ActionSheetController,
-  ) {}
+    public wsConnector: WebSocketFirebaseCommunicator,
+    public changeDetector: ChangeDetectorRef
+  ) {
 
-  ngOnInit() {
-    this.getDraws();
+  }
 
-    this.connectToSocket();
+  async ngOnInit() {
+    // this.getDraws();
 
-    this.userSubscription = this.authSrvc.user$.asObservable().subscribe(user => {
-      console.log(`🚀 ~ file: home.page.ts ~ line 48 ~ HomePage ~ this.userSubscription=this.authSrvc.user$.asObservable ~ user`, user);
-      if (user) {
-        this.currentUser = user;
-      } else {
-        this.router.navigate(['/']);
-      }
+    this.userSubscription = this.authSrvc.user$.asObservable()
+      .subscribe(async user => {
+        if (user) {
+          this.currentUser = user;
+          await this.connectToSocket();
+        } else {
+          this.router.navigate(['/']);
+        }
     });
+
   }
 
   ngOnDestroy() {
@@ -64,6 +70,17 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   async getDraws() {
+    this.loading = true;
+    this.drawsSubscription = (await this.wsConnector.subscribeToDrawsList())
+      .subscribe(draws => {
+        console.log(`🚀 ~ file: home.page.ts ~ line 154 ~ HomePage ~ connectToSocket ~ draws`, draws);
+        this.draws = draws;
+        this.loading = false;
+        this.changeDetector.detectChanges();
+      });
+  }
+
+  async getDrawsMock() {
     /** @TODO replace to DrawSerive.getDraws */
     this.loading = this.pagination.page === 1;
 
@@ -141,27 +158,37 @@ export class HomePage implements OnInit, OnDestroy {
     await actionSheet.present();
   }
 
-  connectToSocket() {
-    this.socket.connect();
+  async connectToSocket() {
 
-    const name = `user-${new Date().getTime()}`;
-    // this.currentUser.name = name;
-
-    this.socket.emit('draw', name);
-
-    this.socket.fromEvent('users').subscribe((data: any) => {
-      console.log(`🚀 ~ file: home.page.ts ~ line 102 ~ HomePage ~ this.socket.fromEvent ~ data`, data);
-      const user = data.user;
-      if (data.event === 'left') {
-        this.showToast('User left: ' + user);
-      } else {
-        this.showToast('User joined: ' + user);
-      }
+    await this.wsConnector.openConnection({
+      socket: this.socket,
+      firebaseAuthToken: 'FIRE',
+      userId: this.currentUser.uid
     });
 
-    this.socket.fromEvent('message').subscribe(message => {
-      this.messages.push(message);
-    });
+    this.getDraws();
+
+    // this.socket.emit('getDrawList');
+
+    // this.socket.connect();
+
+    // const name = `user-${new Date().getTime()}`;
+    // // this.currentUser.name = name;
+
+
+    // this.socket.fromEvent('users').subscribe((data: any) => {
+    //   console.log(`🚀 ~ file: home.page.ts ~ line 102 ~ HomePage ~ this.socket.fromEvent ~ data`, data);
+    //   const user = data.user;
+    //   if (data.event === 'left') {
+    //     this.showToast('User left: ' + user);
+    //   } else {
+    //     this.showToast('User joined: ' + user);
+    //   }
+    // });
+
+    // this.socket.fromEvent('message').subscribe(message => {
+    //   this.messages.push(message);
+    // });
 
   }
 
@@ -172,7 +199,7 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   ionViewWillLeave() {
-    this.socket.disconnect();
+    // this.socket.disconnect();
   }
 
   async showToast(msg) {
