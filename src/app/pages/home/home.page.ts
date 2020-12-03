@@ -1,11 +1,15 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ActionSheetController, ToastController } from '@ionic/angular';
 import { Socket } from 'ngx-socket-io';
 import { Observable, Subject, Subscription } from 'rxjs';
 import { FirebaseAuthService } from 'src/app/services/firebase-auth.service';
-import { Draw, DrawStatus, PaginationResponse, wait } from '../../../interfaces/draw.interfaces';
+import { DrawData, wait } from '../../../interfaces/draw.interfaces';
 import DRAWS_MOCKS from '../../../mocks/draws.json';
+import { DrawService } from '../../sdk/draw/draw.service';
+import { Draw } from '../../sdk/draw/entities/draw.entity';
+import { DrawStatus } from '../../sdk/draw/enums/draw-status.enum';
+import { PaginationResponse } from '../../sdk/draw/interfaces/pagination-response.inteface';
 import { WebSocketFirebaseCommunicator } from '../../services/web-sockets-firebase.communicator';
 @Component({
   selector: 'app-home',
@@ -15,7 +19,7 @@ import { WebSocketFirebaseCommunicator } from '../../services/web-sockets-fireba
 export class HomePage implements OnInit, OnDestroy {
 
   loading = true;
-  draws: Draw[] = [];
+  draws: Draw<DrawData>[] = [];
 
   DrawStatus = DrawStatus;
 
@@ -30,12 +34,6 @@ export class HomePage implements OnInit, OnDestroy {
   userSubscription: Subscription;
   drawsSubscription: Subscription;
 
-
-  message = '';
-  messages = [];
-
-
-
   constructor(
     private socket: Socket,
     private toastCtrl: ToastController,
@@ -43,21 +41,23 @@ export class HomePage implements OnInit, OnDestroy {
     public router: Router,
     public actionSheetCtrl: ActionSheetController,
     public wsConnector: WebSocketFirebaseCommunicator,
-    public changeDetector: ChangeDetectorRef
+    public changeDetector: ChangeDetectorRef,
+    public ngZone: NgZone,
   ) {
 
   }
 
   async ngOnInit() {
-    // this.getDraws();
 
     this.userSubscription = this.authSrvc.user$.asObservable()
-      .subscribe(async user => {
-        if (user) {
-          this.currentUser = user;
-          await this.connectToSocket();
+    .subscribe(async user => {
+      if (user) {
+        this.currentUser = user;
+        await this.connectToSocket();
+        DrawService.setCommunicator(this.wsConnector);
+        await this.getDraws();
         } else {
-          this.router.navigate(['/']);
+          this.ngZone.run(() => this.router.navigate(['/']));
         }
     });
 
@@ -71,48 +71,20 @@ export class HomePage implements OnInit, OnDestroy {
 
   async getDraws() {
     this.loading = true;
-    this.drawsSubscription = (await this.wsConnector.subscribeToDrawsList())
+    this.drawsSubscription = (await DrawService.subscribeToDrawsList())
       .subscribe(draws => {
         console.log(`🚀 ~ file: home.page.ts ~ line 154 ~ HomePage ~ connectToSocket ~ draws`, draws);
-        this.draws = draws;
+        this.draws = draws.map(draw => new Draw<DrawData>(draw));
         this.loading = false;
         this.changeDetector.detectChanges();
       });
+
+    return this.drawsSubscription;
   }
 
-  async getDrawsMock() {
-    /** @TODO replace to DrawSerive.getDraws */
-    this.loading = this.pagination.page === 1;
-
-    await wait(1000);
-
-    const perPage = 10;
-    this.pagination.pageCount = Math.ceil(DRAWS_MOCKS.length / perPage);
-    const start = this.pagination.page * perPage;
-    const end = start + perPage;
-    console.log('🚀 ~ file: home.page.ts ~ line 50 ~ HomePage ~ newDraws ~ DRAWS_MOCKS', Array.from(DRAWS_MOCKS));
-    const newDraws = DRAWS_MOCKS.slice(start, end).map(draw => {
-      return {
-        data: {
-          ...draw,
-          private: false,
-        },
-        uuid: draw.uuid,
-        spots: draw.spots,
-        status: draw.status,
-        candidatesCount: draw.candidatesCount > draw.spots ? draw.spots : draw.candidatesCount,
-      };
-    }) as Draw[];
-
-    if (this.pagination.page === 1) {
-      this.draws = newDraws;
-    } else {
-      this.draws.push(...newDraws);
-    }
-
-    this.loading = false;
-
-  }
+  /**
+   * @TODO check status before entering draw page
+   */
 
   async loadNextPage(event) {
     this.pagination.page++;
@@ -166,36 +138,6 @@ export class HomePage implements OnInit, OnDestroy {
       userId: this.currentUser.uid
     });
 
-    this.getDraws();
-
-    // this.socket.emit('getDrawList');
-
-    // this.socket.connect();
-
-    // const name = `user-${new Date().getTime()}`;
-    // // this.currentUser.name = name;
-
-
-    // this.socket.fromEvent('users').subscribe((data: any) => {
-    //   console.log(`🚀 ~ file: home.page.ts ~ line 102 ~ HomePage ~ this.socket.fromEvent ~ data`, data);
-    //   const user = data.user;
-    //   if (data.event === 'left') {
-    //     this.showToast('User left: ' + user);
-    //   } else {
-    //     this.showToast('User joined: ' + user);
-    //   }
-    // });
-
-    // this.socket.fromEvent('message').subscribe(message => {
-    //   this.messages.push(message);
-    // });
-
-  }
-
-
-  sendMessage() {
-    this.socket.emit('send-message', { text: this.message });
-    this.message = '';
   }
 
   ionViewWillLeave() {

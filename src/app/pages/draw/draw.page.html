@@ -1,7 +1,7 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
     <ion-buttons slot="start">
-      <ion-button [routerLink]="['/home']" routerDirection="back" >
+      <ion-button (click)="leaveDraw()" routerDirection="back" >
         <ion-icon slot="icon-only" name="log-out-outline" color="danger" class="flip-x"></ion-icon>
       </ion-button>
     </ion-buttons>
@@ -78,13 +78,13 @@
   </ion-list>
 
   <ion-list lines="full" *ngIf="!loading && draw && draw.candidates">
-    <ion-item *ngFor="let candidate of draw.candidates; let i = index" class="draw-item" [class.me]="i === draw.candidates.length - 1" [class.winner]="false">
-      <ion-note slot="start" color="medium">#{{i}}</ion-note>
+    <ion-item *ngFor="let candidate of draw.candidates; let i = index" class="draw-item" [class.me]="currentUser && candidate.id === currentUser.uid" [class.winner]="false">
+      <ion-note slot="start" color="medium">#{{candidate.getIndexes()[0]}}</ion-note>
       <ion-avatar slot="start">
-        <img [src]="candidate.avatar">
+        <img [src]="candidate.profile.avatar">
       </ion-avatar>
       <ion-label>
-        {{candidate.firstName}} {{candidate.lastName}}
+        {{candidate.profile.firstName}} {{candidate.profile.lastName}}
       </ion-label>
       <ion-button 
         (click)="openModal('viewDetails')"
@@ -160,31 +160,44 @@
   <div class="overlay" (click)="closeModal('sendCommit')"></div>
   <div class="form-container">
     <ion-row class="ion-align-items-center ion-justify-content-center number-picker">
-      <ion-col size="9" class="ion-text-center">
+      <ion-col size="12" class="ion-text-center">
         <b>Escolha um número</b><br>
-        <small> (ou clique para aleatorizar)</small>
+        <small (click)="getRandomValue('commit')"> (ou clique aqui para aleatorizar)</small>
       </ion-col>
       
-      <ion-col size="4">
-        <ion-icon name="remove-circle-outline" color="dark"></ion-icon>
+      <ion-col size="2">
+        <ion-icon name="remove-circle-outline" color="dark" (click)="decrementNumber('commit')"></ion-icon>
       </ion-col>
-      <ion-col size="4">
-        <h3>17</h3>
+      <ion-col size="8">
+        <ion-input 
+          type="number" 
+          value="17" 
+          class="choice-input" 
+          [(ngModel)]="forms.commit.value"
+          (ionChange)="getCommit('commit')"
+          min="0"
+          [max]="draw && (draw.spots * 10 - 1)"
+        ></ion-input>
       </ion-col>
-      <ion-col size="4">
-        <ion-icon name="add-circle-outline" color="dark"></ion-icon>
+      <ion-col size="2">
+        <ion-icon name="add-circle-outline" color="dark" (click)="incrementNumber('commit')"></ion-icon>
       </ion-col>
     </ion-row>
 
     <ion-item lines="full">
       <b slot="start">Chave:</b>
-      <ion-label>jasf2f6dsfafds51f65sd3fs3</ion-label>
-      <ion-icon slot="end" name="shuffle-outline" color="primary"></ion-icon>
+      <ion-input 
+        type="text" 
+        [(ngModel)]="forms.commit.nonce" 
+        (ionChange)="getCommit('commit')"
+        class="key-input"
+      ></ion-input>
+      <ion-icon slot="end" name="shuffle-outline" color="primary" (click)="getRandomNonce('commit')"></ion-icon>
     </ion-item>
 
     <ion-item lines="full">
       <b slot="start">Hash:</b>
-      <ion-label class="hash">sadasds4324234dsdsadkjsaf32j4k32j4l23jl4...ksjdflfjlsl2k4</ion-label>
+      <ion-label class="hash">{{forms.commit.hash}}</ion-label>
     </ion-item>
 
     <ion-row class="ion-justify-content-between footer-buttons">
@@ -192,7 +205,7 @@
         <ion-button color="danger" fill="clear" (click)="closeModal('sendCommit')">Cancelar</ion-button>
       </ion-col>
       <ion-col size="auto">
-        <ion-button color="success" fill="clear" strong="true">Confirmar commit</ion-button>
+        <ion-button color="success" fill="clear" strong="true" (click)="confirmCommit()">Confirmar commit</ion-button>
       </ion-col>
     </ion-row>
 
@@ -205,17 +218,26 @@
     <ion-row class="ion-align-items-center ion-justify-content-center number-picker">
       <ion-col size="12" class="ion-text-center">
         <b>Escolha um número para revelar</b><br>
-        <small> (clique para resetar)</small>
+        <small (click)="resetOriginalValue()"> (clique para resetar)</small>
+        <p *ngIf="forms.reveal.value !== forms.commit.sentValue || forms.reveal.nonce !== forms.commit.sentNonce"><b>Você está trapaceando!</b></p>
       </ion-col>
       
       <ion-col size="2">
-        <ion-icon name="remove-circle-outline" color="dark"></ion-icon>
+        <ion-icon name="remove-circle-outline" color="dark" (click)="decrementNumber('reveal')"></ion-icon>
       </ion-col>
       <ion-col size="8">
-        <ion-input type="number" value="17" class="choice-input"></ion-input>
+        <ion-input 
+          type="number" 
+          value="17" 
+          class="choice-input" 
+          [(ngModel)]="forms.reveal.value"
+          (ionChange)="getCommit('reveal')"
+          min="0"
+          [max]="draw && (draw.spots * 10 - 1)"
+        ></ion-input>
       </ion-col>
       <ion-col size="2">
-        <ion-icon name="add-circle-outline" color="dark"></ion-icon>
+        <ion-icon name="add-circle-outline" color="dark" (click)="incrementNumber('reveal')"></ion-icon>
       </ion-col>
     </ion-row>
     <ion-row class="ion-align-items-center ion-justify-content-center number-picker">
@@ -226,10 +248,14 @@
 
       <ion-col size="12">
         <ion-item lines="none">
-          <ion-icon slot="start" name="refresh-outline" color="success"></ion-icon>
-          <ion-input type="text" value="jasf2f6dsfafds51f65sd3fs3" class="key-input"></ion-input>
-          <!-- <ion-label>jasf2f6dsfafds51f65sd3fs3</ion-label> -->
-          <ion-icon slot="end" name="shuffle-outline" color="primary"></ion-icon>
+          <ion-icon slot="start" name="refresh-outline" color="success" (click)="resetOriginalNonce()"></ion-icon>
+          <ion-input 
+            type="text" 
+            [(ngModel)]="forms.reveal.nonce" 
+            (ionChange)="getCommit('reveal')"
+            class="key-input"
+          ></ion-input>
+          <ion-icon slot="end" name="shuffle-outline" color="primary" (click)="getRandomNonce('reveal')"></ion-icon>
         </ion-item>
       </ion-col>
     </ion-row>
@@ -237,7 +263,7 @@
 
     <ion-item lines="full">
       <b slot="start">Hash:</b>
-      <ion-label class="hash">sadasds4324234dsdsadkjsaf32j4k32j4l23jl4...ksjdflfjlsl2k4</ion-label>
+      <ion-label class="hash">{{forms.reveal.hash}}</ion-label>
     </ion-item>
 
     <ion-row class="ion-justify-content-between footer-buttons">
@@ -245,7 +271,7 @@
         <ion-button color="danger" fill="clear" (click)="closeModal('sendReveal')">Cancelar</ion-button>
       </ion-col>
       <ion-col size="auto">
-        <ion-button color="success" fill="clear" strong="true">Confirmar reveal</ion-button>
+        <ion-button color="success" fill="clear" strong="true" (click)="confirmReveal()">Confirmar reveal</ion-button>
       </ion-col>
     </ion-row>
 

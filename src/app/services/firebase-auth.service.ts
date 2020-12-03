@@ -1,25 +1,31 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/auth';
 import { Observable, Subject, from, BehaviorSubject } from 'rxjs';
 import { Platform } from '@ionic/angular';
 import { filter, map, take } from 'rxjs/operators';
 import firebase from 'firebase/app';
 import { Router } from '@angular/router';
+import * as crypto from 'crypto';
+import { Storage } from '@ionic/storage';
+import { SecurityService } from '../sdk/security/security.service';
 
 export type User = any;
 
 @Injectable()
 export class FirebaseAuthService {
 
-  currentUser: any;
+  currentUser: firebase.User;
   userProviderAdditionalInfo: any;
   redirectResult: Subject<any> = new Subject<any>();
-  user$ = new BehaviorSubject<any>(undefined);
+  user$ = new BehaviorSubject<firebase.User>(undefined);
+  keyPair: CryptoKeyPair;
 
   constructor(
     public angularFireAuth: AngularFireAuth,
     public platform: Platform,
     public router: Router,
+    public ngZone: NgZone,
+    private storage: Storage,
   ) {
     this.angularFireAuth.onAuthStateChanged((user) => {
       console.log(`AuthStateChanged - user:`, user);
@@ -27,11 +33,14 @@ export class FirebaseAuthService {
         // User is signed in.
         this.currentUser = user;
         this.user$.next(this.currentUser);
+        this.ngZone.run(async () => {
+          await this.getKeyPair(this.currentUser.uid);
+        });
       } else {
         // No user is signed in.
         this.currentUser = null;
         this.user$.next(null);
-        this.router.navigate(['/']);
+        this.ngZone.run(() => this.router.navigate(['/']));
       }
     });
 
@@ -47,6 +56,42 @@ export class FirebaseAuthService {
     }, (error) => {
       this.redirectResult.next({error: error.code});
     });
+  }
+
+  async getKeyPair(userUid: string) {
+    await this.storage.ready();
+
+    const prevPrivateKey = await this.storage.get(userUid + '_privKey')
+      .catch(err => undefined);
+    const prevPublicKey = await this.storage.get(userUid + '_pubKey')
+      .catch(err => undefined);
+
+    if (prevPrivateKey && prevPublicKey) {
+      this.keyPair = {
+        privateKey: prevPrivateKey,
+        publicKey: prevPublicKey,
+      };
+    } else {
+      /** @TODO Use real cripto */
+      this.keyPair = {
+        privateKey: ('priv_' + userUid) as any,
+        publicKey: 'pub_' + userUid as any,
+      };
+      // const pair = await (new SubtleCrypto()).generateKey(
+      //   'RSASSA-PKCS1-v1_5',
+      //   true,
+      //   ['encrypt', 'decrypt', 'sign', 'decrypt']
+      // );
+      // console.log(`🚀 ~ file: firebase-auth.service.ts ~ line 85 ~ FirebaseAuthService ~ getKeyPair ~ pair`, pair);
+      // this.keyPair = SecurityService.generateKeyPair();
+
+      await Promise.all([
+        this.storage.set(userUid + '_privKey', this.keyPair.privateKey),
+        this.storage.set(userUid + '_pubKey', this.keyPair.publicKey),
+      ]);
+    }
+
+    return this.keyPair;
   }
 
   getRedirectResult(): Observable<any> {

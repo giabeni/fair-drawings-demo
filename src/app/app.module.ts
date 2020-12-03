@@ -14,7 +14,7 @@ import { AngularFireAuthModule } from '@angular/fire/auth';
 import { environment } from '../environments/environment';
 import { FirebaseAuthService } from './services/firebase-auth.service';
 import { WebSocketFirebaseCommunicator } from './services/web-sockets-firebase.communicator';
-
+import { IonicStorageModule } from '@ionic/storage';
 
 const socketConfig: SocketIoConfig = {
   url: 'http://localhost:3000',
@@ -38,6 +38,7 @@ const socketConfig: SocketIoConfig = {
     SocketIoModule.forRoot(socketConfig),
     AngularFireModule.initializeApp(environment.firebase),
     AngularFireAuthModule,
+    IonicStorageModule.forRoot(),
   ],
   providers: [
     StatusBar,

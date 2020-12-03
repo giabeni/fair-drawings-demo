@@ -23,7 +23,7 @@ export class SignupPage implements OnInit {
       if (user) {
         (await this.toastCtrl.create({
           header: `Olá, ${user.displayName}!`,
-          message: 'Autenticação confirmada...',
+          // message: 'Autenticação confirmada...',
           duration: 2000,
         })).present();
 

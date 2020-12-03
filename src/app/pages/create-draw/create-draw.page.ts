@@ -2,7 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ToastController } from '@ionic/angular';
 import { Socket } from 'ngx-socket-io';
-import { Draw } from '../../../interfaces/draw.interfaces';
+import { DrawService } from '../../sdk/draw/draw.service';
+import { Draw } from '../../sdk/draw/entities/draw.entity';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
 import { WebSocketFirebaseCommunicator } from '../../services/web-sockets-firebase.communicator';
 
@@ -13,15 +14,18 @@ import { WebSocketFirebaseCommunicator } from '../../services/web-sockets-fireba
 })
 export class CreateDrawPage implements OnInit {
 
-  public draw: Draw = {
-    data: {},
+  public drawForm = {
+    data: {
+      title: undefined,
+      description: undefined,
+    },
+    spots: undefined,
   };
 
   user: any;
 
   constructor(
     public socket: Socket,
-    public wsConnector: WebSocketFirebaseCommunicator,
     public authSrvc: FirebaseAuthService,
     public toastCtrl: ToastController,
     public router: Router,
@@ -36,12 +40,13 @@ export class CreateDrawPage implements OnInit {
     const loading = await this.showLoading();
     console.log('Creating draw...');
 
-    const draw: Draw = {
-      spots: this.draw.spots,
-      data: this.draw.data,
-    };
+    const draw = new Draw(
+      this.drawForm.spots,
+      this.user.uid,
+      this.drawForm.data,
+    );
 
-    const createdDrawEvent = await this.wsConnector.createDraw(draw)
+    const createdDrawEvent = await DrawService.createDraw(draw)
       .catch(err => {
         console.error(err);
         this.showToast('Erro ao criar sorteio', 4000, 'danger');

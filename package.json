@@ -25,10 +25,16 @@
     "@ionic-native/splash-screen": "^5.0.0",
     "@ionic-native/status-bar": "^5.0.0",
     "@ionic/angular": "^5.0.0",
+    "@ionic/storage": "^2.3.1",
+    "buffer": "^6.0.3",
+    "crypto-js": "^4.0.0",
     "firebase": "^8.1.1",
+    "js-sha256": "^0.9.0",
+    "js-sha512": "^0.8.0",
     "ngx-socket-io": "^3.2.0",
     "rxjs": "~6.5.5",
     "tslib": "^2.0.0",
+    "uuid": "^8.3.1",
     "zone.js": "~0.10.3"
   },
   "devDependencies": {
@@ -41,7 +47,7 @@
     "@ionic/angular-toolkit": "^2.3.0",
     "@types/jasmine": "~3.5.0",
     "@types/jasminewd2": "~2.0.3",
-    "@types/node": "^12.11.1",
+    "@types/node": "^12.19.8",
     "codelyzer": "^6.0.0",
     "jasmine-core": "~3.5.0",
     "jasmine-spec-reporter": "~5.0.0",
@@ -54,6 +60,9 @@
     "ts-node": "~8.3.0",
     "tslint": "~6.1.0",
     "typescript": "~3.9.5"
+  },
+  "browser": {
+    "crypto": false
   },
   "description": "An Ionic project"
 }

@@ -2,8 +2,11 @@ import { Injectable } from '@angular/core';
 import { Socket } from 'ngx-socket-io';
 import { WrappedSocket } from 'ngx-socket-io/src/socket-io.service';
 import { Observable } from 'rxjs';
-import { PaginationResponse, Draw, DrawData, DrawEvent } from '../../interfaces/draw.interfaces';
-import { Communicator } from './communicator';
+import { Communicator } from '../sdk/draw/communicators/communicator.service';
+import { Candidate } from '../sdk/draw/entities/candidate.entity';
+import { Draw } from '../sdk/draw/entities/draw.entity';
+import { DrawEvent } from '../sdk/draw/interfaces/draw-event.interface';
+import { PaginationResponse } from '../sdk/draw/interfaces/pagination-response.inteface';
 
 export interface ConnectionConfig {
   socket: WrappedSocket;
@@ -12,14 +15,14 @@ export interface ConnectionConfig {
 }
 
 @Injectable()
-export class WebSocketFirebaseCommunicator extends Communicator {
+export class WebSocketFirebaseCommunicator extends Communicator<ConnectionConfig, Socket> {
 
   socket?: WrappedSocket;
   firebaseAuthToken?: string;
   userId?: string;
   connected = false;
 
-  async openConnection(params: ConnectionConfig): Promise<any> {
+  async openConnection(params: ConnectionConfig): Promise<Socket> {
     if (!params.socket) {
       throw new Error('Missing SocketIo instance from "ngx-socket-io"');
     }
@@ -43,6 +46,7 @@ export class WebSocketFirebaseCommunicator extends Communicator {
     try {
       this.socket.connect();
       this.connected = true;
+      return this.socket;
     } catch (err) {
       console.error('Couldn`t connect to the server', err);
       this.connected = false;
@@ -78,6 +82,12 @@ export class WebSocketFirebaseCommunicator extends Communicator {
 
   createDraw(draw: Draw): Promise<DrawEvent> {
 
+    const drawBody = {
+      data: draw.data,
+      spots: draw.spots,
+      uuid: draw.uuid,
+    };
+
     return new Promise<DrawEvent>((resolve, reject) => {
       try {
         const timeout = setTimeout(() => {
@@ -94,7 +104,7 @@ export class WebSocketFirebaseCommunicator extends Communicator {
         });
 
 
-        this.socket.emit('createDraw', draw);
+        this.socket.emit('createDraw', drawBody);
 
       } catch (err) {
         console.error(err);
@@ -108,24 +118,45 @@ export class WebSocketFirebaseCommunicator extends Communicator {
     throw new Error('Method not implemented.');
   }
 
-  post(event: DrawEvent, uuid: string): Promise<boolean> {
-    throw new Error('Method not implemented.');
+  async post(event: DrawEvent, uuid: string): Promise<boolean> {
+    event.drawUuid = uuid;
+    event.from = {
+      id: this.userId,
+    };
+    return new Promise<true>((resolve, reject) => {
+      try {
+        const timeout = setTimeout(() => {
+          reject(new Error('TIMEOUT:POST_TO_DRAW'));
+        }, 5000);
+
+        this.socket.on('eventPosted', () => {
+          clearTimeout(timeout);
+          resolve(true);
+        });
+
+        this.socket.emit('postToDraw', event);
+
+      } catch (err) {
+        console.error(err);
+        throw new Error(err);
+      }
+    });
   }
 
   async getDraw(uuid: string): Promise<Draw> {
     setTimeout(() => {
       this.socket.emit('getDraw', {
-        user: {
+        stakeholder: {
           id: this.userId,
         },
-        drawId: uuid,
+        drawUuid: uuid,
       });
     }, 100);
     return this.socket.fromOneTimeEvent<Draw>('getDraw');
   }
 
-  async listen(uuid: string): Promise<Observable<DrawEvent>> {
-    return new Promise<Observable<DrawEvent>>((resolve, reject) => {
+  async joinDraw(uuid: string) {
+    return new Promise<true>((resolve, reject) => {
       try {
         const timeout = setTimeout(() => {
           reject(new Error('TIMEOUT:JOIN_DRAW'));
@@ -133,14 +164,56 @@ export class WebSocketFirebaseCommunicator extends Communicator {
 
         this.socket.on('drawJoined', (drawJoined) => {
           clearTimeout(timeout);
-          resolve(this.socket.fromEvent<DrawEvent>('drawEvent'));
+          resolve(true);
         });
 
         this.socket.emit('joinDraw', {
+          stakeholder: {
+            id: this.userId,
+          },
+          drawUuid: uuid,
+        });
+
+      } catch (err) {
+        console.error(err);
+        throw new Error(err);
+      }
+    });
+  }
+
+  async leaveDraw(uuid: string): Promise<true> {
+    try {
+      this.socket.emit('leaveDraw', {
+        user: {
+          id: this.userId,
+        },
+        drawUuid: uuid,
+      });
+
+      return true;
+    } catch (err) {
+      console.error('Error leaveDraw event', err);
+      throw new Error('Error emiting leaveDraw event');
+    }
+  }
+
+  async listen(uuid: string): Promise<Observable<DrawEvent>> {
+    return new Promise<Observable<DrawEvent>>((resolve, reject) => {
+      try {
+        const timeout = setTimeout(() => {
+          reject(new Error('TIMEOUT:LISTEN_DRAW'));
+        }, 5000);
+
+        this.socket.on('drawListened', (drawListened) => {
+          clearTimeout(timeout);
+          resolve(this.socket.fromEvent<DrawEvent>('drawEvent'));
+        });
+
+        this.socket.emit('listenDraw', {
           user: {
             id: this.userId,
           },
-          drawId: uuid,
+          drawUuid: uuid,
         });
 
       } catch (err) {
