@@ -54,6 +54,10 @@ export class DrawPage implements OnInit, OnDestroy {
     }
   };
 
+  details: {
+    candidate?: Candidate;
+  } = {};
+
   currentUser: firebase.User;
 
   userSubs: Subscription;
@@ -137,22 +141,78 @@ export class DrawPage implements OnInit, OnDestroy {
 
   }
 
-  async openModal(modal: string) {
-    this.modals[modal] = true;
-    this.modalOpen = true;
+  getCandidateBadge(candidate: Candidate) {
+    if (this.draw.status === DrawStatus.PENDING) {
+      return {
+        color: 'medium',
+        text: 'presente',
+      };
+    } else if (this.draw.status === DrawStatus.COMMIT) {
+      return !!this.draw.getCommitByCandidate(candidate) ? {
+        color: 'success',
+        text: 'ver commit',
+      } : {
+        color: 'primary',
+        text: 'commit pendente',
+      };
+    } else if (this.draw.status === DrawStatus.REVEAL) {
+      const reveal = this.draw.getRevealByCandidate(candidate);
+      return reveal && reveal.valid ? {
+        color: 'success',
+        text: 'reveal: ',
+      } : {
+        color: 'primary',
+        text: 'reveal pendente',
+      };
+    } else if (this.draw.status === DrawStatus.FINISHED) {
+      const reveal = this.draw.getRevealByCandidate(candidate);
+      return reveal && reveal.valid ? {
+        color: 'dark',
+        text: reveal.data,
+      } : {
+        color: 'danger',
+        text: '?',
+      };
+    }
+  }
+
+  getReadableDate(timestamp: number) {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString() + ' às ' + date.toLocaleTimeString();
+  }
+
+  getDigestFromReveal(candidate: Candidate) {
+    const reveal = this.draw.getRevealByCandidate(candidate);
+    const commit = this.draw.getCommitByCandidate(candidate);
+
+    return CommitRevealService.getDigestFromReveal(reveal, commit);
+  }
+
+  async openModal(modal: 'sendCommit' | 'sendReveal' | 'viewDetails', candidate?: Candidate) {
     if (modal === 'sendCommit') {
       this.getRandomValue('commit');
       this.getRandomNonce('commit');
       this.getCommit('commit');
+    } else if (modal === 'sendReveal') {
+      this.forms.reveal.value = this.forms.commit.sentValue;
+      this.forms.reveal.nonce = this.forms.commit.sentNonce;
+      this.getCommit('reveal');
+    } else if (modal === 'viewDetails' && !!candidate) {
+      this.details = {
+        candidate,
+      };
     }
+    this.modals[modal] = true;
+    this.modalOpen = true;
     this.changeDetector.detectChanges();
   }
 
   async closeModal(modal: string) {
     this.modalOpen = false;
 
-    await wait(600);
+    await wait(100);
     this.modals[modal] = false;
+    this.changeDetector.detectChanges();
   }
 
   async showToast(msg, duration = 2000, color = 'light', position = 'bottom') {
@@ -237,10 +297,17 @@ export class DrawPage implements OnInit, OnDestroy {
 
   resetOriginalValue() {
     this.forms.reveal.value = this.forms.commit.sentValue;
+    this.changeDetector.detectChanges();
   }
 
   resetOriginalNonce() {
     this.forms.reveal.nonce = this.forms.commit.sentNonce;
+    this.changeDetector.detectChanges();
+  }
+
+  isCheating() {
+    return  this.forms.reveal.value !== this.forms.commit.sentValue ||
+            this.forms.reveal.nonce !== this.forms.commit.sentNonce;
   }
 
   async confirmCommit() {
@@ -256,6 +323,7 @@ export class DrawPage implements OnInit, OnDestroy {
 
     const privateKey = this.authSrvc.keyPair.privateKey;
     await DrawService.sendSignedCommit(this.draw.uuid, rawCommit, privateKey);
+    await this.closeModal('commit');
   }
 
   async confirmReveal() {
@@ -269,6 +337,7 @@ export class DrawPage implements OnInit, OnDestroy {
 
     const privateKey = this.authSrvc.keyPair.privateKey;
     await DrawService.sendSignedReveal(this.draw.uuid, reveal, privateKey);
+    await this.closeModal('reveala');
   }
 
   getEventText(event: DrawEvent) {

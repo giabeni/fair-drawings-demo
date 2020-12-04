@@ -34,6 +34,10 @@ export class CommitRevealService {
     );
   }
 
+  public static getDigestFromReveal(reveal: Reveal, commit: Commit) {
+      return CommitRevealService.encrypt(reveal.data, reveal.nonce, reveal.metadata, commit.hashFunction);
+  }
+
   public static checkCommitFormat(commit: Commit) {
     return (
       !!commit &&

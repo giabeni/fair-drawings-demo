@@ -87,12 +87,19 @@
         {{candidate.profile.firstName}} {{candidate.profile.lastName}}
       </ion-label>
       <ion-button 
-        (click)="openModal('viewDetails')"
+        (click)="openModal('viewDetails', candidate)"
         slot="end" 
-        color="primary" 
+        [color]="getCandidateBadge(candidate).color" 
         fill="clear" 
         size="small" 
-        strong="true">aguardando commit</ion-button>
+        strong="true"
+        [innerHtml]="getCandidateBadge(candidate).text"></ion-button>
+      <ion-badge
+        *ngIf="draw.getRevealByCandidate(candidate) && draw.getRevealByCandidate(candidate).valid"
+        (click)="openModal('viewDetails', candidate)"
+        color="light"
+        slot="end" 
+        >{{ draw.getRevealByCandidate(candidate).data }}</ion-badge>
     </ion-item>
   </ion-list>
 </ion-content>
@@ -111,8 +118,9 @@
     expand="full" 
     color="primary" 
     fill="solid" 
-    size="large" 
-    class="ion-no-margin">Enviar commit</ion-button>
+    size="large"
+    [disabled]="!!forms.commit.sentValue"
+    class="ion-no-margin">{{!!forms.commit.sentValue ? 'Commit enviado' : 'Enviar commit'}}</ion-button>
   
   <ion-button *ngIf="!loading && draw && draw.status === DrawStatus.REVEAL" 
     (click)="openModal('sendReveal')"
@@ -120,7 +128,8 @@
     color="primary" 
     fill="solid" 
     size="large" 
-    class="ion-no-margin">Enviar reveal</ion-button>
+    [disabled]="!!draw.getRevealByCandidate({ id: currentUser.uid })"
+    class="ion-no-margin">{{!!draw.getRevealByCandidate({ id: currentUser.uid }) ? 'Reveal enviado' : 'Enviar reveal'}}</ion-button>
 
   <ion-button *ngIf="!loading && draw && draw.status === DrawStatus.INVALIDATED" 
     expand="full" 
@@ -133,7 +142,7 @@
   <ion-row *ngIf="!loading && draw && draw.status === DrawStatus.FINISHED" class="result-box ion-align-items-center ion-justify-content-center">
     <ion-col size="auto">
       <p>
-        SOMA = <b>43</b>
+        SOMA = <b>{{ draw.getSum() }}</b>
       </p>
     </ion-col>
     <ion-col size="3">
@@ -143,16 +152,16 @@
     </ion-col>
     <ion-col size="auto">
       <p>
-        43 % 4 = <b>3</b>
+        {{ draw.getSum() }} % {{ draw.candidatesCount }} = <b>{{ draw.getWinnerIndex() }}</b>
       </p>
     </ion-col>
   </ion-row>
   <div *ngIf="!loading && draw && draw.status === DrawStatus.FINISHED" class="winner-bar ion-text-center">
     <h2>Vencedor:</h2>
     <h4>
-      <img class="avatar" src="https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/21760012/original/d4c0c142f91f012c9a8a9c9aeef3bac28036f15b/create-your-cartoon-style-flat-avatar-or-icon.jpg">
-      João da Silva</h4>
-    <h3>#3</h3>
+      <img class="avatar" [src]="draw.winner.profile.avatar">
+      {{ draw.winner.profile.firstName }} {{ draw.winner.profile.lastName }}</h4>
+    <h3>#{{ draw.getWinnerIndex() }}</h3>
   </div>
 </ion-footer>
 
@@ -214,18 +223,17 @@
 
 <div class="modal" [class.open]="modalOpen" *ngIf="modals.sendReveal">
   <div class="overlay" (click)="closeModal('sendReveal')"></div>
-  <div class="form-container">
+  <div class="form-container" [class.cheating]="isCheating()">
     <ion-row class="ion-align-items-center ion-justify-content-center number-picker">
       <ion-col size="12" class="ion-text-center">
         <b>Escolha um número para revelar</b><br>
         <small (click)="resetOriginalValue()"> (clique para resetar)</small>
-        <p *ngIf="forms.reveal.value !== forms.commit.sentValue || forms.reveal.nonce !== forms.commit.sentNonce"><b>Você está trapaceando!</b></p>
       </ion-col>
       
       <ion-col size="2">
         <ion-icon name="remove-circle-outline" color="dark" (click)="decrementNumber('reveal')"></ion-icon>
       </ion-col>
-      <ion-col size="8">
+      <ion-col size="8" class="ion-text-center">
         <ion-input 
           type="number" 
           value="17" 
@@ -235,6 +243,9 @@
           min="0"
           [max]="draw && (draw.spots * 10 - 1)"
         ></ion-input>
+        <ion-text *ngIf="isCheating()" color="warning">
+          <small>Você está trapaceando!</small>
+        </ion-text>
       </ion-col>
       <ion-col size="2">
         <ion-icon name="add-circle-outline" color="dark" (click)="incrementNumber('reveal')"></ion-icon>
@@ -248,7 +259,17 @@
 
       <ion-col size="12">
         <ion-item lines="none">
-          <ion-icon slot="start" name="refresh-outline" color="success" (click)="resetOriginalNonce()"></ion-icon>
+          <ion-icon 
+            slot="start" 
+            name="refresh-outline" 
+            style="opacity: 0;" 
+            [hidden]="isCheating()"></ion-icon>
+          <ion-icon 
+            slot="start" 
+            name="refresh-outline" 
+            color="success" 
+            (click)="resetOriginalNonce()" 
+            [hidden]="!isCheating()"></ion-icon>
           <ion-input 
             type="text" 
             [(ngModel)]="forms.reveal.nonce" 
@@ -278,18 +299,18 @@
   </div>
 </div>
 
-<div class="modal" [class.open]="modalOpen" *ngIf="modals.viewDetails">
+<div class="modal" [class.open]="modalOpen" *ngIf="modals.viewDetails && !!details.candidate">
   <div class="overlay" (click)="closeModal('viewDetails')"></div>
   <ion-card>
     <ion-card-header>
       <ion-item lines="none">
         <ion-avatar slot="start">
-          <img src="https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/21760012/original/d4c0c142f91f012c9a8a9c9aeef3bac28036f15b/create-your-cartoon-style-flat-avatar-or-icon.jpg">
+          <img [src]="details.candidate.profile.avatar">
         </ion-avatar>
         <ion-label class="ion-text-center">
-          João da Silva
+          {{details.candidate.profile.firstName + details.candidate.profile.lastName}}
         </ion-label>
-        <ion-note slot="end" color="medium">#0</ion-note>
+        <ion-note slot="end" color="medium">#{{details.candidate.getIndexes()[0]}}</ion-note>
       </ion-item>
     </ion-card-header>
 
@@ -320,16 +341,19 @@
           <ion-col size="auto">
             <h2>Commit</h2>
           </ion-col>
-          <ion-col size="auto" class="ion-text-right">
+          <ion-col size="12" class="ion-text-center" *ngIf="!draw.getCommitByCandidate(details.candidate)">
+            <ion-note>Ainda não recebido...</ion-note>
+          </ion-col>
+          <ion-col size="auto" class="ion-text-right" *ngIf="!!draw.getCommitByCandidate(details.candidate)">
             <ion-note>
-              <small>20/10/2020 às 14:02:56</small>
+              <small>{{ getReadableDate(draw.getCommitByCandidate(details.candidate).timestamp) }}</small>
             </ion-note>
           </ion-col>
-          <ion-col class="ion-text-center" size="12">
+          <ion-col class="ion-text-center" size="12" *ngIf="!!draw.getCommitByCandidate(details.candidate)">
             <ion-textarea
               readonly
               rows="3"
-              value="lj;dlksadksal;djklsa;djiowqjoi qwjque0932oirasljjsfjdsifsdfjajdaspjdsaojdasjpoa"></ion-textarea>
+              [value]="draw.getCommitByCandidate(details.candidate).digest"></ion-textarea>
           </ion-col>
         </ion-row>
 
@@ -338,57 +362,67 @@
           <ion-col size="4">
             <h2>Reveal</h2>
           </ion-col>
+          <ion-col size="12" class="ion-text-center" *ngIf="!draw.getRevealByCandidate(details.candidate)">
+            <ion-note>Ainda não recebido...</ion-note>
+          </ion-col>
 
           <ion-col size="1"></ion-col>
 
-          <ion-col size="7" class="ion-text-right">
+          <ion-col size="7" class="ion-text-right" *ngIf="!!draw.getRevealByCandidate(details.candidate)">
             <ion-note>
-              <small>20/10/2020 às 14:02:56</small>
+              <small>{{ getReadableDate(draw.getRevealByCandidate(details.candidate).timestamp) }}</small>
             </ion-note>
           </ion-col>
 
 
-          <ion-col class="ion-text-center" size="3">
+          <ion-col class="ion-text-center" size="3" *ngIf="!!draw.getRevealByCandidate(details.candidate)">
             <small>Número:</small>
             <ion-textarea
               class="number"
               readonly
               cols="3"
               rows="1"
-              value="12"></ion-textarea>
+              [value]="draw.getRevealByCandidate(details.candidate).data"></ion-textarea>
           </ion-col>
 
-          <ion-col size="1">
+          <ion-col size="1" *ngIf="!!draw.getRevealByCandidate(details.candidate)">
             <strong class="reveal-plus">+</strong>
           </ion-col>
 
-          <ion-col size="8" class="ion-text-center">
+          <ion-col size="8" class="ion-text-center" *ngIf="!!draw.getRevealByCandidate(details.candidate)">
             <small>Chave (nonce):</small>
             <ion-textarea
               class="mask"
               readonly
               rows="1"
-              value="dsadasderfewfew1261das65"></ion-textarea>
+              [value]="draw.getRevealByCandidate(details.candidate).nonce"></ion-textarea>
           </ion-col>
 
 
-          <ion-col size="12" class="ion-text-center">
+          <ion-col size="12" class="ion-text-center" *ngIf="!!draw.getRevealByCandidate(details.candidate)">
             <ion-icon name="arrow-down-outline"></ion-icon>
           </ion-col>
 
 
-          <ion-col size="12" class="ion-text-center">
+          <ion-col size="12" class="ion-text-center" *ngIf="!!draw.getRevealByCandidate(details.candidate)">
             <ion-textarea
               class="mask"
               color="success"
               readonly
               rows="2"
-              value="dsadasderfewdasfas1as5d1as5d1as5d1asd1as16adas61dsafew1261das65"></ion-textarea>
+              [value]="getDigestFromReveal(details.candidate)"></ion-textarea>
           </ion-col>
-          <ion-text color="success" class="ion-text-center">
+          <ion-text color="success" class="ion-text-center" *ngIf="draw.getRevealByCandidate(details.candidate) && draw.getRevealByCandidate(details.candidate).valid">
             <small>
               <b>
                 O resultado da hash obtido no reveal confere com o digest enviado no commit.
+              </b>
+            </small>
+          </ion-text>
+          <ion-text color="danger" class="ion-text-center" *ngIf="draw.getRevealByCandidate(details.candidate) && !draw.getRevealByCandidate(details.candidate).valid">
+            <small>
+              <b>
+                O resultado da hash obtido no reveal DIFERE do digest enviado no commit!
               </b>
             </small>
           </ion-text>

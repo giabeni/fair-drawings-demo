@@ -98,6 +98,18 @@ ion-list {
       font-size: 12px;
     }
 
+    ion-button::part(native) .arrow {
+      color: var(--ion-color-dark);
+      margin: 0 10px;
+    }
+
+    ion-button::part(native) .value {
+      color: var(--ion-color-dark);
+      padding: 2px;
+      border: 1px solid;
+      border-radius: 100%;
+    }
+
     &:nth-child(even) {
       --background: #f2f2f2b5;
     }
@@ -161,7 +173,7 @@ ion-footer {
   .result-box {
     background-color: #fff;
     padding: 0 20px;
-    border-top: 2px solid var(--ion-color-primary);
+    border-top: 2px solid var(--ion-color-success);
     word-spacing: 8px;
     text-align: center;
   }
@@ -295,6 +307,16 @@ ion-footer {
     .footer-buttons {
       background: #1aad002e;
       padding: 0px;
+    }
+
+    &.cheating {
+      border-top: 4px solid var(--ion-color-warning);
+      .choice-input {
+        color: var(--ion-color-warning);
+      }
+      .hash {
+        color: var(--ion-color-warning);
+      }
     }
 
   }

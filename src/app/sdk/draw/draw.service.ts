@@ -97,7 +97,7 @@ export class DrawService<D = DrawData> {
     return this._communicator.joinDraw(draw.uuid);
   }
 
-  public static sendSignedCommit(uuid: string, rawCommit: RawCommit, privateKey: crypto.KeyObject) {
+  public static sendSignedCommit(uuid: string, rawCommit: RawCommit, privateKey: CryptoKey) {
     const commit = CommitRevealService.createCommit(rawCommit);
     /** @TODO sign commit */
 
@@ -112,7 +112,7 @@ export class DrawService<D = DrawData> {
     }, uuid);
   }
 
-  public static sendSignedReveal(uuid: string, rawReveal: Reveal, privateKey: crypto.KeyObject) {
+  public static sendSignedReveal(uuid: string, rawReveal: Reveal, privateKey: CryptoKey) {
     const reveal = CommitRevealService.createReveal(rawReveal);
     /** @TODO sign reveal */
 

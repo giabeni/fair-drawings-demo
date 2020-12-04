@@ -40,11 +40,11 @@ export class DrawEventEngine {
 
       // received ack from other candidate
       case DrawEventType.ACK:
-        draw.setAck(event.data, event.from.id)
+        draw.setAck(event.data, event.from.id);
         if (draw.updateStatus()) {
           await DrawService.updateStatus(draw.uuid, draw.status);
         }
-        /** @TODO save status of draw in firebase */
+        break;
 
       default:
         break;
@@ -60,7 +60,7 @@ export class DrawEventEngine {
     draw.addStakeholder(new Candidate(candidate), true);
 
     if (draw.candidatesCount === draw.spots) {
-      await DrawService.sendAck(draw.uuid, DrawAck.JOIN);
+      await DrawService.sendAck(draw.uuid, DrawAck.ALL_JOINED);
     }
   }
 
@@ -68,17 +68,27 @@ export class DrawEventEngine {
     draw.removeStakeholder(new Candidate(candidate));
   }
 
-  private static onCommitReceived(signedCommit: SignedCommit, draw: Draw) {
+  private static async onCommitReceived(signedCommit: SignedCommit, draw: Draw) {
     try {
-      draw.registerCommit(signedCommit);
+      if (
+        draw.registerCommit(signedCommit) &&
+        draw.commits.length === draw.spots
+      ) {
+        await DrawService.sendAck(draw.uuid, DrawAck.ALL_COMMITED);
+      }
     } catch (commitError) {
       /** @TODO post error to stream */
     }
   }
 
-  private static onRevealReceived(signedReveal: SignedReveal, draw: Draw) {
+  private static async onRevealReceived(signedReveal: SignedReveal, draw: Draw) {
     try {
-      draw.registerReveal(signedReveal);
+      if (
+        draw.registerReveal(signedReveal) &&
+        draw.reveals.length === draw.spots
+      ) {
+        await DrawService.sendAck(draw.uuid, DrawAck.ALL_REVEALED);
+      }
     } catch (commitError) {
       /** @TODO post error to stream */
     }

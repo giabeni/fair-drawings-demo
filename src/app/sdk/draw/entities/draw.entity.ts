@@ -70,10 +70,10 @@ export class Draw<D = DrawData> {
    * Table of all acknoledgements sent by other peers
    */
   private _acks = {
-    JOIN: {},
-    COMMIT: {},
-    REVEAL: {},
-    RESULT: {},
+    ALL_JOINED: {},
+    ALL_COMMITED: {},
+    ALL_REVEALED: {},
+    ALL_FINISHED: {},
   };
 
   /**
@@ -156,17 +156,33 @@ export class Draw<D = DrawData> {
    */
   public updateStatus() {
     const previousStatus = this._status;
-    if (this.spots > 0 && this.candidates.length < this.spots) {
+    if (
+      this.candidates.length < this.spots
+    ) {
       this._status = DrawStatus.PENDING;
-    } else if (this.spots === this.candidates.length && this.checkAcksByType(DrawAck.JOIN)) {
-      this._status = DrawStatus.COMMIT;
-    } else if (this.commits.length === this.candidates.length) {
-      this._status = DrawStatus.REVEAL;
-    } else if (this.reveals.length === this.candidates.length) {
-      this.computeWinner();
+    }
+    else if (
+      previousStatus === DrawStatus.PENDING &&
+      this.spots === this.candidates.length &&
+      this.checkAcksByType(DrawAck.ALL_JOINED)
+    ) {
+        this._status = DrawStatus.COMMIT;
+    }
+    else if (
+      previousStatus === DrawStatus.COMMIT &&
+      this.commits.length === this.candidates.length &&
+      this.checkAcksByType(DrawAck.ALL_COMMITED)
+    ) {
+        this._status = DrawStatus.REVEAL;
+    }
+    else if (
+      previousStatus === DrawStatus.REVEAL &&
+      this.reveals.length === this.candidates.length &&
+      this.checkAcksByType(DrawAck.ALL_REVEALED)) {
+      console.log('compute winner', this.computeWinner());
     }
 
-    return previousStatus !== this._status;
+    return previousStatus !== this._status ? this._status : false;
   }
 
   /**
@@ -248,6 +264,9 @@ export class Draw<D = DrawData> {
    * @param userId the id of the user
    */
   public setAck(type: DrawAck, userId: string) {
+    if (!this._acks[type]) {
+      this._acks[type] = {};
+    }
     this._acks[type][userId] = true;
   }
 
@@ -293,7 +312,7 @@ export class Draw<D = DrawData> {
    * @param candidate the instance of the candidate
    */
   public getCommitByCandidate(candidate: Candidate) {
-    return this.commits.find((commit) => commit.userId === candidate.id);
+    return !!candidate && this.commits.find((commit) => commit.userId === candidate.id);
   }
 
   /**
@@ -301,7 +320,7 @@ export class Draw<D = DrawData> {
    * @param candidate the instance of the candidate
    */
   public getRevealByCandidate(candidate: Candidate) {
-    return this.reveals.find((reveal) => reveal.userId === candidate.id);
+    return !!candidate &&  this.reveals.find((reveal) => reveal.userId === candidate.id);
   }
 
   /**
@@ -309,6 +328,7 @@ export class Draw<D = DrawData> {
    * @param signedCommit the commit with the sender signature
    */
   public checkCommit(signedCommit: SignedCommit) {
+
     // check commit format
     if (!CommitRevealService.checkCommitFormat(signedCommit.commit)) {
       /** @TODO post WRONG_COMMIT_FORMAT */
@@ -320,6 +340,12 @@ export class Draw<D = DrawData> {
     if (!candidate) {
       /** @TODO post FORBIDDEN_COMMIT_USER_ID */
       return DrawEventType.FORBIDDEN_COMMIT_USER_ID;
+    }
+
+    // checks if player hasn't already sent his commit
+    if (!!this.getCommitByCandidate(candidate)) {
+      /** @TODO post DUPLICATE_COMMIT */
+      return DrawEventType.DUPLICATE_COMMIT;
     }
 
     /** @TODO !IMPORTANT! - Validar assinatura */
@@ -357,22 +383,30 @@ export class Draw<D = DrawData> {
       return DrawEventType.FORBIDDEN_REVEAL_USER_ID;
     }
 
+    // checks if player hasn't already sent his reveal
+    if (!!this.getRevealByCandidate(candidate)) {
+      /** @TODO post DUPLICATE_REVEAL */
+      return DrawEventType.DUPLICATE_REVEAL;
+    }
+
+    /** @TODO !IMPORTANT! - Validar assinatura */
+
     // checks signature of reveal
-    if (!candidate.publicKey) {
-      /** @TODO post UNAUTHORIZED_REVEAL_SIGNATURE */
-      return DrawEventType.UNAUTHORIZED_REVEAL_SIGNATURE;
-    }
+    // if (!candidate.publicKey) {
+    //   /** @TODO post UNAUTHORIZED_REVEAL_SIGNATURE */
+    //   return DrawEventType.UNAUTHORIZED_REVEAL_SIGNATURE;
+    // }
 
-    const isSignatureValid = SecurityService.verifySignature(
-      Buffer.from(signedReveal.reveal),
-      candidate.publicKey,
-      signedReveal.signature,
-    );
+    // const isSignatureValid = SecurityService.verifySignature(
+    //   Buffer.from(signedReveal.reveal),
+    //   candidate.publicKey,
+    //   signedReveal.signature,
+    // );
 
-    if (!isSignatureValid) {
-      /** @TODO post UNAUTHORIZED_REVEAL_SIGNATURE */
-      return DrawEventType.UNAUTHORIZED_REVEAL_SIGNATURE;
-    }
+    // if (!isSignatureValid) {
+    //   /** @TODO post UNAUTHORIZED_REVEAL_SIGNATURE */
+    //   return DrawEventType.UNAUTHORIZED_REVEAL_SIGNATURE;
+    // }
 
     // Gets commit sent by candidate
     const commit = this.getCommitByCandidate(candidate);
@@ -394,6 +428,8 @@ export class Draw<D = DrawData> {
   /**
    * Saves a new commit to the draw proccess
    * @param signedCommit the encrypted commit object
+   * @returns true if registration succeeded
+   * @throws Error DrawEventType for commit, if there was any error
    */
   public registerCommit(signedCommit: SignedCommit) {
     if (this.status !== DrawStatus.COMMIT) {
@@ -408,11 +444,15 @@ export class Draw<D = DrawData> {
     }
 
     this.commits.push(signedCommit.commit);
+
+    return true;
   }
 
   /**
    * Saves a new reveal to the draw proccess
    * @param signedReveal the encrypted reveal object
+   * @returns true if registration succeeded
+   * @throws Error DrawEventType for reveals, if there was any error
    */
   public registerReveal(signedReveal: SignedReveal) {
     if (this.status !== DrawStatus.REVEAL) {
@@ -426,23 +466,47 @@ export class Draw<D = DrawData> {
     }
 
     this.reveals.push({ ...signedReveal.reveal, valid: revealCheck === true });
+    return true;
   }
 
   private computeWinner() {
+    console.log('Computing winner....');
     if (this.status !== DrawStatus.REVEAL || this.candidates.length <= 0) {
       throw new Error('FORBIDDEN_DRAW_STATUS');
     }
 
     // checks if all reveals are valid
     const areAllRevealsValid = !this.reveals.find((reveal) => !reveal.valid);
+    console.log('All reveals valid?', areAllRevealsValid);
+
     if (!areAllRevealsValid) {
       /** @TODO post INVALID_REVEAL_MASK */
       /** @TODO set status to INVALIDATED */
       return DrawEventType.INVALID_REVEAL_MASK;
     }
 
-    // share values vector
-    const values = this.reveals.map((reveal) => {
+    // winner index being the rest of the division betwwen sum and number of candidates
+    const winnerIndex = this.getWinnerIndex();
+    console.log('Winner index is', winnerIndex);
+
+    const winnerCandidate = this.getCandidateWithIndex(winnerIndex);
+    // avoiding out of range index
+    if (!!winnerCandidate) {
+      this._winner = winnerCandidate;
+      this._status = DrawStatus.FINISHED;
+      return this._winner;
+    } else {
+      throw new Error('WINNER_INDEX_OUT_OF_RANGE');
+    }
+  }
+
+  public getCandidateWithIndex(index: number) {
+    return this.candidates.find(candidate => candidate.isAtIndex(index));
+  }
+
+  /** share values vector */
+  public getValues() {
+    return this.reveals.map((reveal) => {
       const share = Number(reveal.data);
       if (isNaN(share)) {
         throw new Error('INVALID_REVEAL_DATA');
@@ -450,20 +514,17 @@ export class Draw<D = DrawData> {
         return share;
       }
     });
-
-    // summatory of all values
-    const sum = values.reduce((acc, value) => acc + value, 0);
-
-    // winner index being the rest of the division betwwen sum and number of candidates
-    const winnerIndex = sum % this.candidates.length;
-
-    // avoiding out of range index
-    if (this.candidates[winnerIndex]) {
-      this._winner = this.candidates[winnerIndex];
-      this._status = DrawStatus.FINISHED;
-      return this._winner;
-    } else {
-      throw new Error('WINNER_INDEX_OUT_OF_RANGE');
-    }
   }
+
+  /** Returns the sum of values revealed */
+  public getSum() {
+    return this.getValues()
+      .reduce((acc, value) => acc + value, 0);
+  }
+
+  /** Returns the index of the winner candidate */
+  public getWinnerIndex() {
+    return this.getSum() % this.candidates.length;
+  }
+
 }
