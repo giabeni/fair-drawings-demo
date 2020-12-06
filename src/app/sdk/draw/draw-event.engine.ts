@@ -1,4 +1,4 @@
-import { DrawEvent } from './interfaces/draw-event.interface';
+import { DrawErrorEvent, DrawEvent } from './interfaces/draw-event.interface';
 import { Draw } from './entities/draw.entity';
 import { DrawEventType } from './enums/draw-event-type.enum';
 import { Stakeholder } from './entities/stakeholder.entity';
@@ -8,7 +8,8 @@ import { CommitRevealService } from '../commit-reveal/commit-reveal.service';
 import { SecurityService } from '../security/security.service';
 import { SignedReveal } from '../commit-reveal/interfaces/signed-reveal.interface';
 import { DrawService } from './draw.service';
-import { DrawAck } from './enums/draw-ack.enum';
+import { DrawAckType } from './enums/draw-ack-type.enum';
+import { DrawStatus } from './enums/draw-status.enum';
 
 /**
  * Class to handle events in a draw.
@@ -23,44 +24,61 @@ export class DrawEventEngine {
         await this.onCandidateSubscribed(event.data, draw);
         break;
 
-      // candidate unsubscribed of the draw
+      // candidate left draw
       case DrawEventType.CANDIDATE_UNSUBSCRIBED:
-        await this.onCandidateUnsubscribed(event.data, draw);
+        draw.setError(event);
+        await this.onErrorReceived(event.data, draw);
         break;
 
-      // candidate send a commit
+      // another candidate sent a commit
       case DrawEventType.COMMIT_RECEIVED:
         await this.onCommitReceived(event.data, draw);
         break;
 
-      // candidate send a reveal
+      // another candidate sent a reveal
       case DrawEventType.REVEAL_RECEIVED:
         await this.onRevealReceived(event.data, draw);
         break;
 
       // received ack from other candidate
       case DrawEventType.ACK:
-        draw.setAck(event.data, event.from.id);
-        if (draw.updateStatus()) {
-          await DrawService.updateStatus(draw.uuid, draw.status);
+        try {
+          // delays the ack registering to avoid the validation to proceed before local changes have been computed
+          setTimeout(async () => {
+            draw.setAck(event.data, event.from.id);
+            if (await draw.updateStatus()) {
+              await DrawService.updateStatus(draw, draw.status);
+            }
+          }, 500);
+        } catch (err) {
+          console.error('Inconsistent received ACK');
+          throw err;
         }
+        break;
+
+      case DrawEventType.WRONG_COMMIT_FORMAT:
+      case DrawEventType.WRONG_REVEAL_FORMAT:
+      // case DrawEventType.DUPLICATE_COMMIT:
+      // case DrawEventType.DUPLICATE_REVEAL:
+      case DrawEventType.INVALID_REVEAL_MASK:
+      // case DrawEventType.FORBIDDEN_COMMIT_USER_ID:
+      // case DrawEventType.FORBIDDEN_REVEAL_USER_ID:
+      case DrawEventType.UNAUTHORIZED_COMMIT_SIGNATURE:
+      case DrawEventType.UNAUTHORIZED_REVEAL_SIGNATURE:
+        await this.onErrorReceived(event.data, draw);
         break;
 
       default:
         break;
     }
 
-    // updates the status in the instace of the draw
-    if (draw.updateStatus()) {
-      /** @TODO post STATUS_CHANGED DrawEvent */
-    }
   }
 
   private static async onCandidateSubscribed(candidate: Candidate, draw: Draw) {
     draw.addStakeholder(new Candidate(candidate), true);
 
     if (draw.candidatesCount === draw.spots) {
-      await DrawService.sendAck(draw.uuid, DrawAck.ALL_JOINED);
+      await DrawService.sendAck(draw, DrawAckType.ALL_JOINED);
     }
   }
 
@@ -70,27 +88,61 @@ export class DrawEventEngine {
 
   private static async onCommitReceived(signedCommit: SignedCommit, draw: Draw) {
     try {
-      if (
-        draw.registerCommit(signedCommit) &&
-        draw.commits.length === draw.spots
-      ) {
-        await DrawService.sendAck(draw.uuid, DrawAck.ALL_COMMITED);
+      const commitValidation = await DrawService.checkCommit(draw, signedCommit);
+
+      if (commitValidation === true) {
+        await draw.registerCommit(signedCommit, true);
+      } else {
+        const errorEvent: DrawErrorEvent = {
+          type: commitValidation,
+          data: signedCommit as any,
+        };
+        draw.setError(errorEvent);
+        await draw.registerCommit(signedCommit, false);
+        await DrawService.sendError(draw, errorEvent);
       }
+
+      if (
+        draw.commits.length === draw.spots &&
+        draw.commits.every(commit => commit.valid)
+      ) {
+        await DrawService.sendAck(draw, DrawAckType.ALL_COMMITED);
+      }
+
     } catch (commitError) {
-      /** @TODO post error to stream */
+      console.error('COMMIT ERROR', commitError);
     }
   }
 
   private static async onRevealReceived(signedReveal: SignedReveal, draw: Draw) {
     try {
-      if (
-        draw.registerReveal(signedReveal) &&
-        draw.reveals.length === draw.spots
-      ) {
-        await DrawService.sendAck(draw.uuid, DrawAck.ALL_REVEALED);
+      const revealValidation = await DrawService.checkReveal(draw, signedReveal);
+      if (revealValidation === true) {
+        await draw.registerReveal(signedReveal, true);
+      } else {
+        const errorEvent: DrawErrorEvent = {
+          type: revealValidation,
+          data: signedReveal as any,
+        };
+        draw.setError(errorEvent);
+        await draw.registerReveal(signedReveal, false);
+        await DrawService.sendError(draw, errorEvent);
       }
-    } catch (commitError) {
-      /** @TODO post error to stream */
+
+      if (
+        draw.reveals.length === draw.spots &&
+        draw.reveals.every(reveal => reveal.valid)
+      ) {
+        await DrawService.sendAck(draw, DrawAckType.ALL_REVEALED);
+      }
+    } catch (revealError) {
+      console.error('Reveal ERROR', revealError);
+    }
+  }
+
+  private static async onErrorReceived(data: SignedCommit | SignedReveal | Candidate, draw: Draw) {
+    if (await draw.updateStatus()) {
+      await DrawService.updateStatus(draw, draw.status);
     }
   }
 }

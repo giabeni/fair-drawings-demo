@@ -60,7 +60,7 @@ export abstract class Communicator<P = any, C = any> {
    * @param uuid unique id of the draw.
    * @param candidate the candidate object to remove
    */
-  abstract async leaveDraw(uuid: string): Promise<true>;
+  abstract async leaveDraw(draw: Draw): Promise<true>;
 
   /**
    * Alerts all active users in the connection.

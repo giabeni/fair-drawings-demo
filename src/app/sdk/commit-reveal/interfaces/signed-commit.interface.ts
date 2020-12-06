@@ -12,5 +12,5 @@ export interface SignedCommit {
   /**
    * The signature of the sender
    */
-  signature: Buffer;
+  signature: ArrayBuffer;
 }

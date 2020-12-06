@@ -10,8 +10,10 @@ import { CommitRevealService } from '../../commit-reveal/commit-reveal.service';
 import { v4 as uuidv4 } from 'uuid';
 import { DrawEventType } from '../enums/draw-event-type.enum';
 import { SignedReveal } from '../../commit-reveal/interfaces/signed-reveal.interface';
-import { DrawAck } from '../enums/draw-ack.enum';
-import { DrawEvent } from '../interfaces/draw-event.interface';
+import { DrawErrorEvent, DrawEvent } from '../interfaces/draw-event.interface';
+import { DrawAckType } from '../enums/draw-ack-type.enum';
+import { DrawAck } from '../interfaces/draw-ack.interface';
+import { DrawService } from '../draw.service';
 
 export class Draw<D = DrawData> {
   /**
@@ -59,7 +61,7 @@ export class Draw<D = DrawData> {
   /**
    * List of all commits registered in the draw
    */
-  public readonly commits: Commit[] = [];
+  public readonly commits: (Commit & { valid?: boolean })[] = [];
 
   /**
    * List of all reveals registered in the draw
@@ -83,6 +85,11 @@ export class Draw<D = DrawData> {
     event: DrawEvent,
     receivedAt: Date,
   }[] = [];
+
+  /**
+   * The list of errors ocurred in the proccess
+   */
+  private readonly _errors: DrawErrorEvent[] = [];
 
   /**
    * Get only the elegible stakeholders.
@@ -146,6 +153,10 @@ export class Draw<D = DrawData> {
         this.stakeholders = [];
       }
 
+      if (draw.status === DrawStatus.FINISHED && draw.winner) {
+        this._winner = new Candidate(draw.winner);
+      }
+
     }
 
   }
@@ -154,32 +165,40 @@ export class Draw<D = DrawData> {
    * Fires auto update of the draw status.
    * @returns true if status has changed and false if not.
    */
-  public updateStatus() {
+  public async updateStatus() {
     const previousStatus = this._status;
+
+    if (this.hasErrors()) {
+      this._status = DrawStatus.INVALIDATED;
+      return this._status;
+    }
+
     if (
       this.candidates.length < this.spots
     ) {
-      this._status = DrawStatus.PENDING;
+        this._status = DrawStatus.PENDING;
     }
     else if (
       previousStatus === DrawStatus.PENDING &&
       this.spots === this.candidates.length &&
-      this.checkAcksByType(DrawAck.ALL_JOINED)
+      this.checkAcksByType(DrawAckType.ALL_JOINED)
     ) {
         this._status = DrawStatus.COMMIT;
     }
     else if (
       previousStatus === DrawStatus.COMMIT &&
       this.commits.length === this.candidates.length &&
-      this.checkAcksByType(DrawAck.ALL_COMMITED)
+      this.checkAcksByType(DrawAckType.ALL_COMMITED)
     ) {
         this._status = DrawStatus.REVEAL;
     }
     else if (
       previousStatus === DrawStatus.REVEAL &&
       this.reveals.length === this.candidates.length &&
-      this.checkAcksByType(DrawAck.ALL_REVEALED)) {
-      console.log('compute winner', this.computeWinner());
+      this.checkAcksByType(DrawAckType.ALL_REVEALED)
+    ) {
+        await this.computeWinner();
+        this._status = DrawStatus.FINISHED;
     }
 
     return previousStatus !== this._status ? this._status : false;
@@ -263,11 +282,15 @@ export class Draw<D = DrawData> {
    * @param type the phase type of the ack.
    * @param userId the id of the user
    */
-  public setAck(type: DrawAck, userId: string) {
-    if (!this._acks[type]) {
-      this._acks[type] = {};
+  public setAck(ack: DrawAck, userId: string) {
+    if (!DrawService.validateAck(this, ack)) {
+      /** @TODO invalidate draw */
+      throw new Error('INVALID ACK ' + ack.type);
     }
-    this._acks[type][userId] = true;
+    if (!this._acks[ack.type]) {
+      this._acks[ack.type] = {};
+    }
+    this._acks[ack.type][userId] = true;
   }
 
   /**
@@ -275,7 +298,7 @@ export class Draw<D = DrawData> {
    * @param type the ack phase type.
    * @param userId the id of the user.
    */
-  public checkAck(type: DrawAck, userId: string) {
+  public checkAck(type: DrawAckType, userId: string) {
     return !!(this._acks[type][userId]);
   }
 
@@ -283,7 +306,7 @@ export class Draw<D = DrawData> {
    * Checks if all users sent the specific ack type.
    * @param type the ack phase type.
    */
-  public checkAcksByType(type: DrawAck) {
+  public checkAcksByType(type: DrawAckType) {
     return Object
       .values(this._acks[type])
       .filter(val => !!val)
@@ -324,126 +347,16 @@ export class Draw<D = DrawData> {
   }
 
   /**
-   * Checks the format, the sender and the signature of a commit
-   * @param signedCommit the commit with the sender signature
-   */
-  public checkCommit(signedCommit: SignedCommit) {
-
-    // check commit format
-    if (!CommitRevealService.checkCommitFormat(signedCommit.commit)) {
-      /** @TODO post WRONG_COMMIT_FORMAT */
-      return DrawEventType.WRONG_COMMIT_FORMAT;
-    }
-
-    // check if candidate is subscribed to the draw
-    const candidate = this.getCandidateByUserId(signedCommit.commit.userId);
-    if (!candidate) {
-      /** @TODO post FORBIDDEN_COMMIT_USER_ID */
-      return DrawEventType.FORBIDDEN_COMMIT_USER_ID;
-    }
-
-    // checks if player hasn't already sent his commit
-    if (!!this.getCommitByCandidate(candidate)) {
-      /** @TODO post DUPLICATE_COMMIT */
-      return DrawEventType.DUPLICATE_COMMIT;
-    }
-
-    /** @TODO !IMPORTANT! - Validar assinatura */
-    return true;
-
-    // checks signature of commit
-    if (!candidate.publicKey) {
-      /** @TODO post UNAUTHORIZED_COMMIT_SIGNATURE */
-      return DrawEventType.UNAUTHORIZED_COMMIT_SIGNATURE;
-    }
-
-    const isSignatureValid = SecurityService.verifySignature(
-      Buffer.from(signedCommit.commit),
-      candidate.publicKey,
-      signedCommit.signature,
-    );
-
-    if (!isSignatureValid) {
-      /** @TODO post UNAUTHORIZED_COMMIT_SIGNATURE */
-      return DrawEventType.UNAUTHORIZED_COMMIT_SIGNATURE;
-    }
-
-    return true;
-  }
-
-  /**
-   * Checks the sender and the signature of a reveal
-   * @param signedReveal the reveal with the sender signature
-   */
-  public checkReveal(signedReveal: SignedReveal) {
-    // check if candidate is subscribed to the draw
-    const candidate = this.getCandidateByUserId(signedReveal.reveal.userId);
-    if (!candidate || !candidate.eligible) {
-      /** @TODO post FORBIDDEN_REVEAL_USER_ID */
-      return DrawEventType.FORBIDDEN_REVEAL_USER_ID;
-    }
-
-    // checks if player hasn't already sent his reveal
-    if (!!this.getRevealByCandidate(candidate)) {
-      /** @TODO post DUPLICATE_REVEAL */
-      return DrawEventType.DUPLICATE_REVEAL;
-    }
-
-    /** @TODO !IMPORTANT! - Validar assinatura */
-
-    // checks signature of reveal
-    // if (!candidate.publicKey) {
-    //   /** @TODO post UNAUTHORIZED_REVEAL_SIGNATURE */
-    //   return DrawEventType.UNAUTHORIZED_REVEAL_SIGNATURE;
-    // }
-
-    // const isSignatureValid = SecurityService.verifySignature(
-    //   Buffer.from(signedReveal.reveal),
-    //   candidate.publicKey,
-    //   signedReveal.signature,
-    // );
-
-    // if (!isSignatureValid) {
-    //   /** @TODO post UNAUTHORIZED_REVEAL_SIGNATURE */
-    //   return DrawEventType.UNAUTHORIZED_REVEAL_SIGNATURE;
-    // }
-
-    // Gets commit sent by candidate
-    const commit = this.getCommitByCandidate(candidate);
-    if (!commit) {
-      /** @TODO handle unpredicted errors */
-      return DrawEventType.FORBIDDEN_REVEAL_USER_ID;
-    }
-
-    const isRevealMatchingCommit = CommitRevealService.validateReveal(signedReveal.reveal, commit);
-    if (!isRevealMatchingCommit) {
-      /** @TODO post INVALID_REVEAL_MASK */
-      /** @TODO set status to INVALIDATED */
-      return DrawEventType.INVALID_REVEAL_MASK;
-    }
-
-    return true;
-  }
-
-  /**
    * Saves a new commit to the draw proccess
    * @param signedCommit the encrypted commit object
    * @returns true if registration succeeded
    * @throws Error DrawEventType for commit, if there was any error
    */
-  public registerCommit(signedCommit: SignedCommit) {
+  public async registerCommit(signedCommit: SignedCommit, valid: boolean) {
     if (this.status !== DrawStatus.COMMIT) {
       throw new Error('FORBIDDEN_DRAW_STATUS');
     }
-
-    const commitIsValid = this.checkCommit(signedCommit);
-    console.log(`🚀 ~ file: draw.entity.ts ~ line 401 ~ Draw<D ~ registerCommit ~ commitIsValid`, commitIsValid);
-
-    if (commitIsValid !== true) {
-      throw new Error(commitIsValid);
-    }
-
-    this.commits.push(signedCommit.commit);
+    this.commits.push({ ...signedCommit.commit, valid });
 
     return true;
   }
@@ -454,22 +367,28 @@ export class Draw<D = DrawData> {
    * @returns true if registration succeeded
    * @throws Error DrawEventType for reveals, if there was any error
    */
-  public registerReveal(signedReveal: SignedReveal) {
+  public async registerReveal(signedReveal: SignedReveal, valid: boolean) {
     if (this.status !== DrawStatus.REVEAL) {
       throw new Error('FORBIDDEN_DRAW_STATUS');
     }
 
-    const revealCheck = this.checkReveal(signedReveal);
-
-    if (revealCheck !== true && revealCheck !== DrawEventType.INVALID_REVEAL_MASK) {
-      throw new Error(revealCheck);
-    }
-
-    this.reveals.push({ ...signedReveal.reveal, valid: revealCheck === true });
+    this.reveals.push({ ...signedReveal.reveal, valid });
     return true;
   }
 
-  private computeWinner() {
+  public setError(errorEvent: DrawErrorEvent) {
+    this._errors.push(errorEvent);
+  }
+
+  public getErrors() {
+    return this._errors;
+  }
+
+  public hasErrors() {
+    return this._errors.length > 0;
+  }
+
+  private async computeWinner() {
     console.log('Computing winner....');
     if (this.status !== DrawStatus.REVEAL || this.candidates.length <= 0) {
       throw new Error('FORBIDDEN_DRAW_STATUS');
@@ -493,7 +412,7 @@ export class Draw<D = DrawData> {
     // avoiding out of range index
     if (!!winnerCandidate) {
       this._winner = winnerCandidate;
-      this._status = DrawStatus.FINISHED;
+      await DrawService.sendWinner(this);
       return this._winner;
     } else {
       throw new Error('WINNER_INDEX_OUT_OF_RANGE');

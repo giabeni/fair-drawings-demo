@@ -19,7 +19,7 @@ export class Stakeholder<P = any> {
   /**
    * Public key for assimetric encryption
    */
-  publicKey?: crypto.KeyObject;
+  publicKey?: JsonWebKey;
 
   constructor(stakeholder?: Stakeholder) {
     if (stakeholder) {

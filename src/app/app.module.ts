@@ -27,18 +27,21 @@ const socketConfig: SocketIoConfig = {
 
 @NgModule({
   declarations: [AppComponent],
-  entryComponents: [],
+  entryComponents: [
+  ],
   imports: [
     BrowserModule,
     IonicModule.forRoot({
       mode: 'ios',
       backButtonText: '',
     }),
-    AppRoutingModule,
     SocketIoModule.forRoot(socketConfig),
     AngularFireModule.initializeApp(environment.firebase),
     AngularFireAuthModule,
-    IonicStorageModule.forRoot(),
+    IonicStorageModule.forRoot({
+      driverOrder: ['indexeddb', 'sqlite', 'websql', 'localstorage'],
+    }),
+    AppRoutingModule,
   ],
   providers: [
     StatusBar,

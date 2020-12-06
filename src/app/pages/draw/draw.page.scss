@@ -9,6 +9,15 @@
   div.status-breadcrumbs {
     position: relative;
 
+    &.invalid {
+      div.breadcrumb {
+        background-color: var(--ion-color-danger);
+        &::after {
+          border-bottom: 2px solid var(--ion-color-danger);
+        }
+      }
+    }
+
     div.breadcrumb {
       display: inline-block;
       width: 25%;
@@ -125,6 +134,18 @@ ion-list {
       }
     }
 
+    &.cheated {
+      --background: var(--ion-color-danger);
+      color: #ffffff;
+      ion-label {
+        font-weight: bold;
+      }
+
+      ion-avatar {
+        border: 2px solid var(--ion-color-warning);
+      }
+    }
+
     &.winner {
       --background: var(--ion-color-success);
       --color: #ffffff;
@@ -210,6 +231,29 @@ ion-footer {
       left: -15px;
     }
   }
+
+  .invalid-bar {
+    background-color: #eeaeae;
+    padding: 10px 20px 20px;
+    border-top: 1px solid var(--ion-color-danger);
+
+    h2 {
+      font-family: 'Open Sans';
+      font-weight: bold;
+      color: var(--ion-color-danger);
+    }
+
+    h4 {
+      font-size: 22px;
+      color: var(--ion-color-dark-tint);
+    }
+
+    h3 {
+      font-weight: bold;
+      font-size: 24px;
+      color: var(--ion-color-dark);
+    }
+  }
 }
 
 .modal {
@@ -223,10 +267,12 @@ ion-footer {
   align-items: center;
   transition: 300ms all ease-in;
   opacity: 0;
+  height: 0;
 
   &.open {
     bottom: 0;
     opacity: 1;
+    height: 100%;
     .overlay {
       opacity: 1;
     }

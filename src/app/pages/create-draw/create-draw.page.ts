@@ -56,7 +56,7 @@ export class CreateDrawPage implements OnInit {
     if (createdDrawEvent) {
       loading.dismiss();
       this.showToast('Sorteio criado com sucesso!', 3000, 'success');
-      this.router.navigate(['/home']);
+      this.router.navigate(['/draw', draw.uuid]);
     }
   }
 

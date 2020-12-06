@@ -51,14 +51,14 @@ export class HomePage implements OnInit, OnDestroy {
 
     this.userSubscription = this.authSrvc.user$.asObservable()
     .subscribe(async user => {
-      if (user) {
+      if (user && this.authSrvc.keyPair) {
         this.currentUser = user;
         await this.connectToSocket();
         DrawService.setCommunicator(this.wsConnector);
         await this.getDraws();
-        } else {
-          this.ngZone.run(() => this.router.navigate(['/']));
-        }
+      } else {
+        this.ngZone.run(() => this.router.navigate(['/']));
+      }
     });
 
   }
@@ -67,14 +67,17 @@ export class HomePage implements OnInit, OnDestroy {
     if (this.userSubscription) {
       this.userSubscription.unsubscribe();
     }
+    if (this.drawsSubscription) {
+      this.drawsSubscription.unsubscribe();
+    }
   }
 
   async getDraws() {
     this.loading = true;
     this.drawsSubscription = (await DrawService.subscribeToDrawsList())
       .subscribe(draws => {
-        console.log(`🚀 ~ file: home.page.ts ~ line 154 ~ HomePage ~ connectToSocket ~ draws`, draws);
         this.draws = draws.map(draw => new Draw<DrawData>(draw));
+        console.log(`🚀 ~ file: home.page.ts ~ line 154 ~ HomePage ~ connectToSocket ~ draws`, draws);
         this.loading = false;
         this.changeDetector.detectChanges();
       });
@@ -134,8 +137,9 @@ export class HomePage implements OnInit, OnDestroy {
 
     await this.wsConnector.openConnection({
       socket: this.socket,
-      firebaseAuthToken: 'FIRE',
-      userId: this.currentUser.uid
+      firebaseAuthToken: this.authSrvc.authToken,
+      userId: this.currentUser.uid,
+      publicKey: this.authSrvc.keyPair.publicKey,
     });
 
   }

@@ -38,7 +38,7 @@
   </header>
   
   <header class="draw-header" *ngIf="!loading && draw">
-    <div class="status-breadcrumbs">
+    <div class="status-breadcrumbs" [class.invalid]="draw.status === DrawStatus.INVALIDATED">
       <div class="breadcrumb" [class.active]="draw.status === DrawStatus.COMMIT" [class.done]="[DrawStatus.REVEAL, DrawStatus.FINISHED].includes(draw.status)">Commit</div>
       <div class="breadcrumb" [class.active]="draw.status === DrawStatus.REVEAL" [class.done]="[DrawStatus.FINISHED].includes(draw.status)">Reveal</div>
       <div class="breadcrumb" [class.done]="draw.status === DrawStatus.FINISHED">Resultado</div>
@@ -78,7 +78,13 @@
   </ion-list>
 
   <ion-list lines="full" *ngIf="!loading && draw && draw.candidates">
-    <ion-item *ngFor="let candidate of draw.candidates; let i = index" class="draw-item" [class.me]="currentUser && candidate.id === currentUser.uid" [class.winner]="false">
+    <ion-item 
+      *ngFor="let candidate of draw.candidates; let i = index"
+      class="draw-item" 
+      [class.me]="currentUser && candidate.id === currentUser.uid" 
+      [class.cheated]="['trapaceou!', 'commit inválido'].includes(getCandidateBadge(candidate).text)" 
+      [class.winner]="draw.winner && draw.winner.id === candidate.id"
+    >
       <ion-note slot="start" color="medium">#{{candidate.getIndexes()[0]}}</ion-note>
       <ion-avatar slot="start">
         <img [src]="candidate.profile.avatar">
@@ -156,12 +162,18 @@
       </p>
     </ion-col>
   </ion-row>
+
   <div *ngIf="!loading && draw && draw.status === DrawStatus.FINISHED" class="winner-bar ion-text-center">
     <h2>Vencedor:</h2>
     <h4>
       <img class="avatar" [src]="draw.winner.profile.avatar">
       {{ draw.winner.profile.firstName }} {{ draw.winner.profile.lastName }}</h4>
     <h3>#{{ draw.getWinnerIndex() }}</h3>
+  </div>
+  
+  <div *ngIf="!loading && draw && draw.status === DrawStatus.INVALIDATED" class="invalid-bar ion-text-center">
+    <h2>{{ getErrorDescription(draw.getErrors()).title }}</h2>
+    <p>{{ getErrorDescription(draw.getErrors()).description }}</p>
   </div>
 </ion-footer>
 

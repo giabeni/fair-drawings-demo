@@ -12,5 +12,5 @@ export interface SignedReveal {
   /**
    * The signature of the sender
    */
-  signature: Buffer;
+  signature: ArrayBuffer;
 }

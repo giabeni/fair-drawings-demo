@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { Communicator } from '../sdk/draw/communicators/communicator.service';
 import { Candidate } from '../sdk/draw/entities/candidate.entity';
 import { Draw } from '../sdk/draw/entities/draw.entity';
+import { DrawEventType } from '../sdk/draw/enums/draw-event-type.enum';
 import { DrawEvent } from '../sdk/draw/interfaces/draw-event.interface';
 import { PaginationResponse } from '../sdk/draw/interfaces/pagination-response.inteface';
 
@@ -12,6 +13,7 @@ export interface ConnectionConfig {
   socket: WrappedSocket;
   firebaseAuthToken: string;
   userId: string;
+  publicKey: JsonWebKey;
 }
 
 @Injectable()
@@ -19,6 +21,7 @@ export class WebSocketFirebaseCommunicator extends Communicator<ConnectionConfig
 
   socket?: WrappedSocket;
   firebaseAuthToken?: string;
+  publicKey?: JsonWebKey;
   userId?: string;
   connected = false;
 
@@ -32,25 +35,45 @@ export class WebSocketFirebaseCommunicator extends Communicator<ConnectionConfig
     if (!params.userId) {
       throw new Error('Missing firbase userId');
     }
-
-    this.socket = params.socket;
-    this.firebaseAuthToken = params.firebaseAuthToken;
-    this.userId = params.userId;
-
-    this.socket.ioSocket.query = {
-      Authorization: params.firebaseAuthToken,
-    };
-
-    console.log(`🚀 ~ file: web-sockets-firebase.communicator.ts ~ line 32 ~ WebSocketFirebaseCommunicator ~ openConnection ~ this.socket.ioSocket`, this.socket.ioSocket);
-
-    try {
-      this.socket.connect();
-      this.connected = true;
-      return this.socket;
-    } catch (err) {
-      console.error('Couldn`t connect to the server', err);
-      this.connected = false;
+    if (!params.publicKey) {
+      throw new Error('Missing public key');
     }
+
+    return new Promise<Socket>((resolve, reject) => {
+      try {
+        const timeout = setTimeout(() => {
+          reject(new Error('TIMEOUT:CONNECTION'));
+        }, 5000);
+
+        this.socket = params.socket;
+        this.firebaseAuthToken = params.firebaseAuthToken;
+        this.userId = params.userId;
+        this.publicKey = params.publicKey;
+
+        try {
+          this.socket.once('connectionApproved', (approved: boolean) => {
+            clearTimeout(timeout);
+            if (approved) {
+              this.connected = true;
+              resolve(this.socket);
+            } else {
+              this.connected = false;
+              reject();
+            }
+          });
+
+          this.socket.connect();
+          this.emit('sendPublicKey', this.publicKey);
+        } catch (err) {
+          console.error('Couldn`t connect to the server', err);
+          this.connected = false;
+        }
+
+      } catch (err) {
+        console.error(err);
+        throw new Error(err);
+      }
+    });
   }
 
   async closeConnection(): Promise<boolean> {
@@ -75,7 +98,7 @@ export class WebSocketFirebaseCommunicator extends Communicator<ConnectionConfig
   async subscribeToDrawsList(): Promise<Observable<Draw[]>> {
     console.log('Subscribing to draws list...');
     setTimeout(() => {
-      this.socket.emit('getDrawList');
+      this.emit('getDrawList');
     }, 100);
     return this.socket.fromEvent<Draw[]>('getDrawList');
   }
@@ -104,7 +127,7 @@ export class WebSocketFirebaseCommunicator extends Communicator<ConnectionConfig
         });
 
 
-        this.socket.emit('createDraw', drawBody);
+        this.emit('createDraw', drawBody);
 
       } catch (err) {
         console.error(err);
@@ -134,7 +157,7 @@ export class WebSocketFirebaseCommunicator extends Communicator<ConnectionConfig
           resolve(true);
         });
 
-        this.socket.emit('postToDraw', event);
+        this.emit('postToDraw', event);
 
       } catch (err) {
         console.error(err);
@@ -145,7 +168,7 @@ export class WebSocketFirebaseCommunicator extends Communicator<ConnectionConfig
 
   async getDraw(uuid: string): Promise<Draw> {
     setTimeout(() => {
-      this.socket.emit('getDraw', {
+      this.emit('getDraw', {
         stakeholder: {
           id: this.userId,
         },
@@ -167,7 +190,7 @@ export class WebSocketFirebaseCommunicator extends Communicator<ConnectionConfig
           resolve(true);
         });
 
-        this.socket.emit('joinDraw', {
+        this.emit('joinDraw', {
           stakeholder: {
             id: this.userId,
           },
@@ -181,13 +204,19 @@ export class WebSocketFirebaseCommunicator extends Communicator<ConnectionConfig
     });
   }
 
-  async leaveDraw(uuid: string): Promise<true> {
+  async leaveDraw(draw: Draw): Promise<true> {
     try {
-      this.socket.emit('leaveDraw', {
+      const candidate = draw.getCandidateByUserId(this.userId);
+      await this.post({
+        type: DrawEventType.CANDIDATE_UNSUBSCRIBED,
+        data: candidate,
+      }, draw.uuid);
+
+      this.emit('leaveDraw', {
         user: {
           id: this.userId,
         },
-        drawUuid: uuid,
+        drawUuid: draw.uuid,
       });
 
       return true;
@@ -209,7 +238,7 @@ export class WebSocketFirebaseCommunicator extends Communicator<ConnectionConfig
           resolve(this.socket.fromEvent<DrawEvent>('drawEvent'));
         });
 
-        this.socket.emit('listenDraw', {
+        this.emit('listenDraw', {
           user: {
             id: this.userId,
           },
@@ -221,6 +250,10 @@ export class WebSocketFirebaseCommunicator extends Communicator<ConnectionConfig
         throw new Error(err);
       }
     });
+  }
+
+  private emit(eventName: string, ...args: any[]) {
+    return this.socket.emit(eventName, ...args, this.firebaseAuthToken);
   }
 
 }

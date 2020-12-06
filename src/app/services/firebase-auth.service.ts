@@ -18,7 +18,11 @@ export class FirebaseAuthService {
   userProviderAdditionalInfo: any;
   redirectResult: Subject<any> = new Subject<any>();
   user$ = new BehaviorSubject<firebase.User>(undefined);
-  keyPair: CryptoKeyPair;
+  keyPair: {
+    privateKey: JsonWebKey;
+    publicKey: JsonWebKey;
+  };
+  authToken: any;
 
   constructor(
     public angularFireAuth: AngularFireAuth,
@@ -27,15 +31,20 @@ export class FirebaseAuthService {
     public ngZone: NgZone,
     private storage: Storage,
   ) {
-    this.angularFireAuth.onAuthStateChanged((user) => {
+
+    // this.angularFireAuth.idToken.subscribe(token => {
+    //   this.authToken = token;
+    // });
+
+    this.angularFireAuth.onAuthStateChanged(async (user: firebase.User) => {
       console.log(`AuthStateChanged - user:`, user);
       if (user) {
         // User is signed in.
         this.currentUser = user;
+        this.authToken = await this.angularFireAuth.idToken.pipe(take(1)).toPromise();
+        console.log('AuthToken received', this.authToken);
+        await this.getKeyPair(this.currentUser.uid);
         this.user$.next(this.currentUser);
-        this.ngZone.run(async () => {
-          await this.getKeyPair(this.currentUser.uid);
-        });
       } else {
         // No user is signed in.
         this.currentUser = null;
@@ -61,9 +70,9 @@ export class FirebaseAuthService {
   async getKeyPair(userUid: string) {
     await this.storage.ready();
 
-    const prevPrivateKey = await this.storage.get(userUid + '_privKey')
+    const prevPrivateKey: JsonWebKey = await this.storage.get(userUid + '_privKey')
       .catch(err => undefined);
-    const prevPublicKey = await this.storage.get(userUid + '_pubKey')
+    const prevPublicKey: JsonWebKey = await this.storage.get(userUid + '_pubKey')
       .catch(err => undefined);
 
     if (prevPrivateKey && prevPublicKey) {
@@ -72,19 +81,11 @@ export class FirebaseAuthService {
         publicKey: prevPublicKey,
       };
     } else {
-      /** @TODO Use real cripto */
+      const keyPair = await SecurityService.generateKeyPair();
       this.keyPair = {
-        privateKey: ('priv_' + userUid) as any,
-        publicKey: 'pub_' + userUid as any,
+        privateKey: await SecurityService.exportKey(keyPair.privateKey),
+        publicKey: await SecurityService.exportKey(keyPair.publicKey),
       };
-      // const pair = await (new SubtleCrypto()).generateKey(
-      //   'RSASSA-PKCS1-v1_5',
-      //   true,
-      //   ['encrypt', 'decrypt', 'sign', 'decrypt']
-      // );
-      // console.log(`🚀 ~ file: firebase-auth.service.ts ~ line 85 ~ FirebaseAuthService ~ getKeyPair ~ pair`, pair);
-      // this.keyPair = SecurityService.generateKeyPair();
-
       await Promise.all([
         this.storage.set(userUid + '_privKey', this.keyPair.privateKey),
         this.storage.set(userUid + '_pubKey', this.keyPair.publicKey),

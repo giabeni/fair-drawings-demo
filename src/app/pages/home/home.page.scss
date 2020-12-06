@@ -25,6 +25,9 @@ ion-item.draw-item {
   ion-badge {
     font-weight: normal;
     font-size: 12px;
+    max-width: 44%;
+    overflow-x: hidden;
+    text-overflow: ellipsis;
 
     &.open {
       color: var(--ion-color-success);
@@ -97,5 +100,10 @@ ion-item.draw-item {
       }
 
     }
+  }
+
+  &.item-disabled {
+    opacity: 1;
+    --background: #ebebeb3a;
   }
 }
