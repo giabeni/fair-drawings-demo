@@ -17,6 +17,7 @@ import { Reveal } from '../../sdk/commit-reveal/interfaces/reveal.interface';
 import { DrawAckType } from '../../sdk/draw/enums/draw-ack-type.enum';
 import { SignedReveal } from '../../sdk/commit-reveal/interfaces/signed-reveal.interface';
 import { SignedCommit } from '../../sdk/commit-reveal/interfaces/signed-commit.interface';
+import { WebSocketFirebaseCommunicator } from '../../services/web-sockets-firebase.communicator';
 
 @Component({
   selector: 'app-draw',
@@ -55,6 +56,8 @@ export class DrawPage implements OnInit, OnDestroy {
     }
   };
 
+  overrideSenderId: string;
+
   details: {
     candidate?: Candidate;
   } = {};
@@ -77,6 +80,7 @@ export class DrawPage implements OnInit, OnDestroy {
     private changeDetector: ChangeDetectorRef,
     public alertCtrl: AlertController,
     public authSrvc: FirebaseAuthService,
+    public wsCommunicator: WebSocketFirebaseCommunicator,
     public ngZone: NgZone,
     ) { }
 
@@ -88,6 +92,7 @@ export class DrawPage implements OnInit, OnDestroy {
 
     this.subscriptions.user = this.authSrvc.user$.subscribe(user => {
       this.currentUser = user;
+      this.overrideSenderId = user.uid;
     });
 
     console.log(`🚀 ~ file: draw.page.ts ~ line 58 ~ DrawPage ~ ngOnInit ~ this.currentUser`, this.currentUser);
@@ -470,10 +475,17 @@ export class DrawPage implements OnInit, OnDestroy {
     this.forms.commit.sentValue = this.forms.commit.value;
     this.forms.commit.sentNonce = this.forms.commit.nonce;
 
+    let userId = this.currentUser.uid;
+
+    if (this.overrideSenderId !== this.currentUser.uid) {
+      this.wsCommunicator.overrideUserId(this.overrideSenderId);
+      userId = this.overrideSenderId;
+    }
+
     const rawCommit = {
       data: String(this.forms.commit.value),
       nonce: this.forms.commit.nonce,
-      userId: this.currentUser.uid,
+      userId,
       metadata: undefined,
     };
 
@@ -481,6 +493,10 @@ export class DrawPage implements OnInit, OnDestroy {
     console.log(`🚀 ~ file: draw.page.ts ~ line 415 ~ DrawPage ~ confirmCommit ~ privateKey`, privateKey);
     await DrawService.sendSignedCommit(this.draw.uuid, rawCommit, privateKey);
     await this.closeModal('commit');
+
+    if (this.overrideSenderId !== this.currentUser.uid) {
+      this.wsCommunicator.overrideUserId(this.currentUser.uid);
+    }
   }
 
   async confirmReveal() {
@@ -494,7 +510,7 @@ export class DrawPage implements OnInit, OnDestroy {
 
     const privateKey = this.authSrvc.keyPair.privateKey;
     await DrawService.sendSignedReveal(this.draw.uuid, reveal, privateKey);
-    await this.closeModal('reveala');
+    await this.closeModal('reveal');
   }
 
   getEventToast(event: DrawEvent) {
@@ -608,5 +624,6 @@ export class DrawPage implements OnInit, OnDestroy {
         };
     }
   }
+
 
 }

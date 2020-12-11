@@ -221,6 +221,13 @@
       <ion-label class="hash">{{forms.commit.hash}}</ion-label>
     </ion-item>
 
+    <ion-item lines="full">
+      <b slot="start">Enviar como:</b>
+      <ion-select  [(ngModel)]="overrideSenderId">
+        <ion-select-option *ngFor="let candidate of draw.candidates" [value]="candidate.id" >{{candidate.profile.firstName + ' ' + candidate.profile.lastName}}</ion-select-option>
+      </ion-select>
+    </ion-item>
+
     <ion-row class="ion-justify-content-between footer-buttons">
       <ion-col size="auto">
         <ion-button color="danger" fill="clear" (click)="closeModal('sendCommit')">Cancelar</ion-button>

@@ -70,6 +70,8 @@ export class HomePage implements OnInit, OnDestroy {
     if (this.drawsSubscription) {
       this.drawsSubscription.unsubscribe();
     }
+
+    this.wsConnector.closeConnection();
   }
 
   async getDraws() {

@@ -44,7 +44,7 @@ export class SignupPage implements OnInit {
     .catch(err => {
       console.error('Erro google login', err);
       this.unlogged = true;
-      alert('Erro ao fazer login com o Google');
+      alert('Erro ao fazer login com o Google' + JSON.stringify(err));
     });
 
     console.log(`🚀 ~ file: signup.page.ts ~ line 20 ~ SignupPage ~ googleLogin ~ authResponse`, authResponse);

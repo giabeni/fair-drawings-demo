@@ -256,4 +256,8 @@ export class WebSocketFirebaseCommunicator extends Communicator<ConnectionConfig
     return this.socket.emit(eventName, ...args, this.firebaseAuthToken);
   }
 
+  public overrideUserId(userId: string) {
+    this.userId = userId;
+  }
+
 }
